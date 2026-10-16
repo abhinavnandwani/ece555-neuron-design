@@ -1,46 +1,72 @@
-// ECE555 neuron: whole-design model with switch-level CMOS timing.
+// ECE555 neuron: whole-design model with FinFET switch-level timing, calibrated to ASAP7.
 //
 //   out = ReLU(x1*w1 + x2*w2 + wb)        2-bit codes: 00=0, 01=+1, 11=-1 (10 unused)
 //
-// Every gate is a static CMOS gate described by its pull-down network (PDN) as a
-// series/parallel tree; the pull-up (PUN) is its dual. Devices are sized so the worst
-// stack equals a unit inverter (NMOS 1, PMOS beta, in Wunit), times a per-gate size.
+// Devices
+//   Every gate is static CMOS: a pull-down (PDN) series/parallel tree and its dual pull-up.
+//   Device size is an integer number of fins. Two sizing schemes:
+//     min    every transistor 1 fin
+//     stack  series stacks compensated (worst path matches a 1-fin NMOS / beta-fin PMOS
+//            inverter), widths rounded up to whole fins; beta = stack_beta (1.5 by default)
+//   The optimizer then adds whole fins (an integer multiplier per gate) on the critical path.
 //
-// Timing, in tau = R_unit * C_unit of one minimum NMOS:
-//   R(on network) from series/parallel ON devices; NMOS w -> 1/w, PMOS w -> mu/w
-//   C(net) = fanout gate cap + gamma * output diffusion (+ cload on outputs)
-//   delay  = ln2 * R * C, event driven, inertial
-//   primary inputs are driven by a unit inverter (rdrv), so input cap costs time
-// Ignores stack-node cap, slew and wires: use it to rank designs and pick vectors.
+// Timing (Elmore, event driven, inertial), in ps after calibration:
+//   on-resistance per device  NMOS 1/fins, PMOS mu/fins          (units of R_fin)
+//   gate cap                  1 per fin                           (units of C_fin)
+//   output diffusion          gamma per fin of devices on the output node
+//   stack-node diffusion      gint per fin of devices on each internal series node
+//   delay = ln2 * tau * (R_path * C_out + sum over internal nodes C_node * R_node_to_rail)
+//   Inputs are driven by 1N/2P inverters like the Spectre testbench; a transition's delay is
+//   last output change minus the earliest input-pin change, matching the measurement.
 //
-// What it explores:
-//   architecture  SPEC : MUL -> 2-bit ADD -> 3-bit ADD (+bias) -> ReLU   (slide 14 blocks)
-//                 CSA  : each product is -1/0/+1 = (nonzero, negative) bit pair, so
-//                        count nonzeros and negatives with two parallel full adders and
-//                        compute ReLU(count difference) directly with two gates
-//   cells         XOR style (16T NAND, 12T CMOS, 10T NOR+AOI), full adder (XOR or mirror),
-//                 ReLU (3-bit mux or AND gating)
-//   sizing        greedy critical-path upsizing (TILOS-style), area = sum of device widths
-//   beta          global P/N ratio sweep
+// Calibration: 7,764 Spectre transitions in 20 circuits, ASAP7 RVT, TT, 25 C, 0.9 V, L = 20 nm,
+// 1 fF per output. calibration/asap7_tt_25c_0p9v.txt (six circuits: spec / carry-save XOR /
+// carry-save mirror at min and stack sizing) and calibration/asap7_carry_save_sweep.txt (14
+// carry-save topologies and sizings). `--calibrate A,B` refits gamma, gint, cload, ks and tau.
+// Pre-layout only: no wires, corners or real layout area.
 //
-// Usage: ./neuron                 text report
-//        ./neuron --json out.json  also export every netlist for the diagram page
-//        --beta --mu --gamma --cload --rdrv  override model parameters
+// Area
+//   fins       total fin count (what the simulations measured)
+//   area       bounding box of an estimated floorplan, using the team's area-study template:
+//              ASAP7-style cells (270 nm minimum height, so 1-3 fins per device cost no height),
+//              routing channels between rows and an outer margin. Planning estimate, not a routed
+//              layout; matches the area study's numbers for the same circuits.
+//
+// Usage: ./neuron                       report (calibrated defaults)
+//        ./neuron --json out.json        also export netlists for the diagram page
+//        ./neuron --calibrate FILE       refit timing parameters to Spectre measurements
+//        ./neuron --validate FILE        check the current parameters against other measurements
+//        --tau --mu --gamma --gint --cload --stack_beta   override parameters
 
 #include <bits/stdc++.h>
 #include <future>
 using namespace std;
 
 struct Params {
-    double beta = 1.5, mu = 2.0, gamma = 1.0, cload = 6.0, rdrv = 1.0;
+    // Fit B in calibration/fit.txt: fitted to 7,764 ASAP7 Spectre transitions in 20 circuits (both
+    // calibration files), mu fixed at the measured drain-current ratio 49.35 uA / 41.19 uA = 1.20.
+    // Worst-case delay of every circuit within 8.5% (model reads low); per-transition RMS 14%.
+    double tau = 0.526, mu = 1.2, gamma = 1.409, gint = 1.053, cload = 12.75;
+    double ks = 0.768;                     // series stack: m devices act like R*(1+(m-1)*ks)/m each (1 = linear)
+    double stack_beta = 1.5;               // P/N ratio used by the stack sizing scheme
+    int drvN = 1, drvP = 2;                // input driver inverter, fins (testbench uses 1N/2P)
+    // Area: the team's floorplan template (area-study-2026-10-16/estimate.py), calibrated to the
+    // installed ASAP7 7.5-track LEF widths. Cell width = 54 nm * (NMOS devices + 2); cell height =
+    // max(min_cell_h, 27 nm * (max N fins + max P fins + 4)) rounded up to 54 nm; rows separated by
+    // a routing channel of `tracks` 36 nm tracks; 72 nm outer margin; shelf placement in build order
+    // with the bounding-box aspect ratio kept between 0.5 and 2.
+    int fmax = 3; double cpp_nm = 54, fin_pitch_nm = 27, min_cell_h = 270; int tracks = 4;
 };
+enum Sizing { SZ_MIN, SZ_STACK };
+static const char* SZN[] = {"min", "stack"};
 
 // ---------------------------------------------------------------- SP networks
 struct Node {
     enum K { LEAF, SER, PAR } k;
     int pin = -1;
-    double w = 0;
+    double w = 0;           // fins
     vector<Node> ch;
+    vector<double> jw;      // SER: fins on each junction between consecutive children
 };
 static Node L(int p) { Node n; n.k = Node::LEAF; n.pin = p; return n; }
 static Node S(vector<Node> c) { Node n; n.k = Node::SER; n.ch = move(c); return n; }
@@ -57,25 +83,64 @@ static int slen(const Node& n) {
     for (auto& c : n.ch) r = (n.k == Node::SER) ? r + slen(c) : max(r, slen(c));
     return r;
 }
-static void size_net(Node& n, double R, double scale) {
+static void size_stack(Node& n, double R, double scale) {  // continuous stack compensation
     if (n.k == Node::LEAF) { n.w = scale / R; return; }
     int tot = slen(n);
-    for (auto& c : n.ch) size_net(c, n.k == Node::SER ? R * slen(c) / tot : R, scale);
+    for (auto& c : n.ch) size_stack(c, n.k == Node::SER ? R * slen(c) / tot : R, scale);
+}
+static void to_fins(Node& n, bool minimum, int mult) {
+    if (n.k == Node::LEAF) { n.w = mult * (minimum ? 1.0 : ceil(n.w - 1e-9)); return; }
+    for (auto& c : n.ch) to_fins(c, minimum, mult);
+}
+static double top_width(const Node& n) {
+    if (n.k == Node::LEAF) return n.w;
+    if (n.k == Node::SER) return top_width(n.ch.front());
+    double r = 0; for (auto& c : n.ch) r += top_width(c); return r;
+}
+static double bot_width(const Node& n) {
+    if (n.k == Node::LEAF) return n.w;
+    if (n.k == Node::SER) return bot_width(n.ch.back());
+    double r = 0; for (auto& c : n.ch) r += bot_width(c); return r;
+}
+static void prep_junctions(Node& n) {
+    if (n.k == Node::LEAF) return;
+    for (auto& c : n.ch) prep_junctions(c);
+    n.jw.clear();
+    if (n.k == Node::SER) for (size_t i = 0; i + 1 < n.ch.size(); i++) n.jw.push_back(bot_width(n.ch[i]) + top_width(n.ch[i + 1]));
 }
 static int count_dev(const Node& n) { if (n.k == Node::LEAF) return 1; int r = 0; for (auto& c : n.ch) r += count_dev(c); return r; }
 static double sum_w(const Node& n) { if (n.k == Node::LEAF) return n.w; double r = 0; for (auto& c : n.ch) r += sum_w(c); return r; }
+static double max_w(const Node& n) { if (n.k == Node::LEAF) return n.w; double r = 0; for (auto& c : n.ch) r = max(r, max_w(c)); return r; }
 static void pin_widths(const Node& n, vector<double>& acc) { if (n.k == Node::LEAF) { acc[n.pin] += n.w; return; } for (auto& c : n.ch) pin_widths(c, acc); }
-static double top_width(const Node& n) {
-    if (n.k == Node::LEAF) return n.w;
-    if (n.k == Node::SER) return top_width(n.ch[0]);
-    double r = 0; for (auto& c : n.ch) r += top_width(c); return r;
-}
 static const double INF = 1e18;
-static double resist(const Node& n, const int* v, bool pmos, double mu) {
-    if (n.k == Node::LEAF) { bool on = pmos ? !v[n.pin] : v[n.pin]; return on ? (pmos ? mu : 1.0) / n.w : INF; }
-    if (n.k == Node::SER) { double r = 0; for (auto& c : n.ch) { double x = resist(c, v, pmos, mu); if (x >= INF) return INF; r += x; } return r; }
-    double g = 0; for (auto& c : n.ch) { double x = resist(c, v, pmos, mu); if (x < INF) g += 1 / x; }
-    return g > 0 ? 1 / g : INF;
+static bool conducts(const Node& n, const int* v, bool pmos) {
+    if (n.k == Node::LEAF) return pmos ? !v[n.pin] : v[n.pin];
+    if (n.k == Node::SER) { for (auto& c : n.ch) if (!conducts(c, v, pmos)) return false; return true; }
+    for (auto& c : n.ch) if (conducts(c, v, pmos)) return true;
+    return false;
+}
+struct EV { double R, M, C; };  // resistance, sum C_int * R_to_rail, internal cap
+static EV elmore(const Node& n, const int* v, bool pmos, double mu, double gint, double ks) {
+    if (n.k == Node::LEAF) {
+        bool on = pmos ? !v[n.pin] : v[n.pin];
+        return {on ? (pmos ? mu : 1.0) / n.w : INF, 0, 0};
+    }
+    if (n.k == Node::SER) {
+        int m = n.ch.size(); vector<EV> e(m);
+        for (int i = 0; i < m; i++) { e[i] = elmore(n.ch[i], v, pmos, mu, gint, ks); if (e[i].R >= INF) return {INF, 0, 0}; }
+        double f = (1 + (m - 1) * ks) / m;
+        for (auto& x : e) x.R *= f;
+        double Rb = 0, M = 0, C = 0;
+        for (int i = m - 1; i >= 0; i--) {   // child 0 is nearest the output
+            M += e[i].M + e[i].C * Rb; C += e[i].C;
+            if (i < m - 1) { double cj = gint * n.jw[i]; M += cj * Rb; C += cj; }
+            Rb += e[i].R;
+        }
+        return {Rb, M, C};
+    }
+    double g = 0, M = 0, C = 0;
+    for (auto& c : n.ch) { EV x = elmore(c, v, pmos, mu, gint, ks); if (x.R < INF) { g += 1 / x.R; M += x.M; C += x.C; } }
+    return g > 0 ? EV{1 / g, M, C} : EV{INF, 0, 0};
 }
 
 // ------------------------------------------------------------ primitives
@@ -95,12 +160,12 @@ static Prim MSUM_{"MIR_S", 4, P({S({L(0), L(1), L(2)}), S({L(3), P({L(0), L(1), 
 
 // --------------------------------------------------------------- circuit
 struct Gate {
-    const Prim* prim; vector<int> in; int out; string label; double size = 1;
-    Node pdn, pun; int ndev; vector<double> pinC; double diff, area;
+    const Prim* prim; vector<int> in; int out; string label; int mult = 1;
+    Node pdn, pun; int ndev = 0; vector<double> pinC; double diff = 0, fins = 0; double w_nm = 0, h_nm = 0;
 };
 
 struct Circuit {
-    Params p;
+    Params p; Sizing sz;
     vector<string> netName; vector<int> driver; vector<vector<int>> fanout;
     vector<Gate> gates; vector<int> inputs, outputs;
     int GND, VDD; string prefix;
@@ -108,16 +173,20 @@ struct Circuit {
     vector<vector<string>> blocks;
     vector<double> netC;
 
-    Circuit(Params pp) : p(pp) { GND = net("GND"); VDD = net("VDD"); }
+    Circuit(Params pp, Sizing s) : p(pp), sz(s) { GND = net("GND"); VDD = net("VDD"); }
     int net(const string& n) { netName.push_back(n); driver.push_back(-1); fanout.emplace_back(); return (int)netName.size() - 1; }
     int input(const string& n) { int x = net(n); inputs.push_back(x); return x; }
     void applySize(Gate& g) {
         g.pdn = g.prim->pdn; g.pun = dual(g.prim->pdn);
-        size_net(g.pdn, 1.0, g.size); size_net(g.pun, 1.0, g.size * p.beta);
+        size_stack(g.pdn, 1.0, 1.0); size_stack(g.pun, 1.0, p.stack_beta);
+        to_fins(g.pdn, sz == SZ_MIN, g.mult); to_fins(g.pun, sz == SZ_MIN, g.mult);
+        prep_junctions(g.pdn); prep_junctions(g.pun);
         g.ndev = count_dev(g.pdn) + count_dev(g.pun);
         g.pinC.assign(g.prim->npins, 0); pin_widths(g.pdn, g.pinC); pin_widths(g.pun, g.pinC);
         g.diff = top_width(g.pdn) + top_width(g.pun);
-        g.area = sum_w(g.pdn) + sum_w(g.pun);
+        g.fins = sum_w(g.pdn) + sum_w(g.pun);
+        g.w_nm = p.cpp_nm * (count_dev(g.pdn) + 2);
+        g.h_nm = max(p.min_cell_h, ceil(p.fin_pitch_nm * (max_w(g.pdn) + max_w(g.pun) + 4) / 54.0 - 1e-9) * 54.0);
     }
     int gate(const Prim& pr, vector<int> in) {
         Gate g; g.prim = &pr; g.in = in;
@@ -140,11 +209,30 @@ struct Circuit {
             for (int i = 0; i < (int)g.in.size(); i++) netC[g.in[i]] += g.pinC[i];
             netC[g.out] += p.gamma * g.diff;
         }
+        for (int x : inputs) netC[x] += p.gamma * (p.drvN + p.drvP);
         for (int o : outputs) netC[o] += p.cload;
     }
-    void resize(int gi, double s) { gates[gi].size = s; applySize(gates[gi]); }
+    void setMult(int gi, int m) { gates[gi].mult = m; applySize(gates[gi]); }
     int transistors() const { int n = 0; for (auto& g : gates) n += g.ndev; return n; }
-    double area() const { double a = 0; for (auto& g : gates) a += g.area; return a; }
+    double fins() const { double a = 0; for (auto& g : gates) a += g.fins; return a; }
+    int row() const { double h = 0; for (auto& g : gates) h = max(h, g.h_nm); return (int)h; }   // tallest cell, nm
+    double area_um2() const {   // shelf placement, as in the area study
+        const double gap = ceil(36.0 * p.tracks / 54 - 1e-9) * 54, margin = 72;
+        double wmax = 0, wsum = 0; for (auto& g : gates) { wmax = max(wmax, g.w_nm); wsum += g.w_nm; }
+        double best = INF;
+        for (int cols = (int)ceil(wmax / p.cpp_nm - 1e-9); cols <= (int)ceil(wsum / p.cpp_nm - 1e-9); cols++) {
+            double W = cols * p.cpp_nm, x = 0, rowh = 0, actualw = 0, y = 0; bool any = false;
+            for (auto& g : gates) {
+                if (x + g.w_nm > W && any) { actualw = max(actualw, x); y += rowh + gap; x = 0; rowh = 0; }
+                x += g.w_nm; rowh = max(rowh, g.h_nm); any = true;
+            }
+            actualw = max(actualw, x); y += rowh;
+            double width = actualw + 2 * margin, height = y + 2 * margin;
+            if (width / height < 0.5 || width / height > 2) continue;
+            best = min(best, width * height * 1e-6);
+        }
+        return best;
+    }
 };
 
 // ------------------------------------------------------------ design space
@@ -255,6 +343,7 @@ struct Builder {
 // ----------------------------------------------------------- simulation
 static const int CODES[3] = {0b00, 0b01, 0b11};
 static int dec2(int c) { return c == 0b00 ? 0 : c == 0b01 ? 1 : -1; }
+static int enc2(int v) { return v == 0 ? 0b00 : v == 1 ? 0b01 : 0b11; }
 struct Vec { int x1, x2, w1, w2, wb; };
 static int reference(const Vec& v) { return max(0, dec2(v.x1) * dec2(v.w1) + dec2(v.x2) * dec2(v.w2) + dec2(v.wb)); }
 static string vstr(const Vec& v) {
@@ -266,17 +355,21 @@ static vector<Vec> allVecs() {
     return v;
 }
 static const vector<Vec> VECS = allVecs();
+// Transitions that change the output with the weights held fixed: what a testbench can apply
+// and what the Spectre sweep measured (816 of them).
 static vector<pair<int, int>> makePairs() {
     vector<pair<int, int>> p;
-    for (int i = 0; i < (int)VECS.size(); i++) for (int j = 0; j < (int)VECS.size(); j++)
-        if (i != j && reference(VECS[i]) != reference(VECS[j])) p.push_back({i, j});
+    for (int i = 0; i < (int)VECS.size(); i++) for (int j = 0; j < (int)VECS.size(); j++) {
+        const Vec &a = VECS[i], &b = VECS[j];
+        if (i != j && a.w1 == b.w1 && a.w2 == b.w2 && a.wb == b.wb && reference(a) != reference(b)) p.push_back({i, j});
+    }
     return p;
 }
 static const vector<pair<int, int>> PAIRS = makePairs();
 
-struct Design {  // a built circuit plus its pins
+struct Design {
     Circuit c; int in[10]; vector<int> o; Config cf;
-    Design(Config cf_, Params p) : c(p), cf(cf_) {
+    Design(Config cf_, Params p, Sizing s) : c(p, s), cf(cf_) {
         const char* nm[5] = {"x1", "x2", "w1", "w2", "wb"};
         for (int i = 0; i < 5; i++) { in[2 * i] = c.input(string(nm[i]) + "[0]"); in[2 * i + 1] = c.input(string(nm[i]) + "[1]"); }
         int X1[2] = {in[0], in[1]}, X2[2] = {in[2], in[3]}, W1[2] = {in[4], in[5]}, W2[2] = {in[6], in[7]}, WB[2] = {in[8], in[9]};
@@ -293,11 +386,11 @@ struct Sim {
     Sim(Design& d) : c(d.c), in(d.in), o(d.o) {}
     int gin[8];
     void loadIn(const Gate& g) { for (size_t i = 0; i < g.in.size(); i++) gin[i] = val[g.in[i]]; }
-    int evalGate(const Gate& g) { loadIn(g); return resist(g.pdn, gin, false, 1) >= INF ? 1 : 0; }
+    int evalGate(const Gate& g) { loadIn(g); return conducts(g.pdn, gin, false) ? 0 : 1; }
     double delay(const Gate& g, int nv) {
         loadIn(g);
-        double R = nv ? resist(g.pun, gin, true, c.p.mu) : resist(g.pdn, gin, false, 1);
-        return M_LN2 * R * c.netC[g.out];
+        EV e = nv ? elmore(g.pun, gin, true, c.p.mu, c.p.gint, c.p.ks) : elmore(g.pdn, gin, false, c.p.mu, c.p.gint, c.p.ks);
+        return M_LN2 * c.p.tau * (e.R * c.netC[g.out] + e.M);
     }
     void setInputs(const Vec& v) {
         int codes[5] = {v.x1, v.x2, v.w1, v.w2, v.wb};
@@ -313,6 +406,7 @@ struct Sim {
         tChange.assign(c.netName.size(), -1); tCause.assign(c.netName.size(), -1);
     }
     int readOut() { return val[o[0]] | (val[o[1]] << 1) | (val[o[2]] << 2); }
+    // Delay from the earliest input-pin change to the last output change (Spectre convention).
     double transition(const Vec& a, const Vec& b, int& lastNet) {
         settle(a);
         using E = tuple<double, int, int>;
@@ -326,13 +420,15 @@ struct Sim {
             q.push({t + delay(g, nv), pseq[gi], gi});
         };
         int codes[5] = {b.x1, b.x2, b.w1, b.w2, b.wb};
-        int target[10];
+        int target[10]; double first = INF;
         for (int k = 0; k < 10; k++) {
             target[k] = (codes[k / 2] >> (k % 2)) & 1;
             int n = in[k];
             if (target[k] != val[n]) {
-                double R = target[k] ? c.p.mu / c.p.beta : 1.0;  // unit-inverter driver
-                q.push({M_LN2 * c.p.rdrv * R * c.netC[n], 0, -(k + 1)});
+                double R = target[k] ? c.p.mu / c.p.drvP : 1.0 / c.p.drvN;
+                double t = M_LN2 * c.p.tau * R * c.netC[n];
+                first = min(first, t);
+                q.push({t, 0, -(k + 1)});
             }
         }
         double last = -1; lastNet = -1;
@@ -351,7 +447,8 @@ struct Sim {
             }
             for (int fo : c.fanout[changed]) evaluate(fo, t, changed);
         }
-        return last;
+        if (last < 0) return -1;
+        return last - first;
     }
     vector<pair<int, double>> tracePath(int net) {
         vector<pair<int, double>> p;
@@ -361,10 +458,10 @@ struct Sim {
 };
 
 struct Timing {
-    double worst = 0, rise = 0, fall = 0, wfix = 0;
-    int wi = -1, wj = -1, fi = -1, fj = -1;
+    double worst = 0, rise = 0, fall = 0;
+    int wi = -1, wj = -1;
     vector<pair<int, double>> path;
-    vector<int> topPairs;  // indices into PAIRS of the slowest transitions
+    vector<int> topPairs;
 };
 static Timing timeIt(Design& d, const vector<int>* subset, int keepTop) {
     Sim s(d); Timing T;
@@ -380,8 +477,6 @@ static Timing timeIt(Design& d, const vector<int>* subset, int keepTop) {
         if (keepTop) all.push_back({t, pi});
         if (s.val[lastNet]) T.rise = max(T.rise, t); else T.fall = max(T.fall, t);
         if (t > T.worst) { T.worst = t; T.wi = i; T.wj = j; T.path = s.tracePath(lastNet); }
-        const Vec &a = VECS[i], &b = VECS[j];
-        if (a.w1 == b.w1 && a.w2 == b.w2 && a.wb == b.wb && t > T.wfix) { T.wfix = t; T.fi = i; T.fj = j; }
     }
     if (keepTop) {
         int k = min(keepTop, (int)all.size());
@@ -395,48 +490,178 @@ static int funcErrors(Design& d, vector<Vec>* ex = nullptr) {
     for (auto& v : VECS) { s.settle(v); if (s.readOut() != reference(v)) { e++; if (ex && ex->size() < 4) ex->push_back(v); } }
     return e;
 }
-static double fo4(const Params& p) {
-    double cin = 1 + p.beta, cl = p.gamma * cin + 4 * cin;
-    return (M_LN2 * cl + M_LN2 * (p.mu / p.beta) * cl) / 2;
+
+// ------------------------------------------------------------ calibration
+// A measured circuit ("case"): design key arch:xor:fa (e.g. csa:aoi:mirror) plus a sizing
+//   min | all2 | stack_b10 | stack_b15 | mul2 | fa2 | out2   (2 fins on one block, 1 elsewhere)
+// File lines: [case] key sizing  x1 x2 w1 w2 wb  x1 x2 w1 w2 wb  delay_ps   (values -1/0/1)
+// The original format "spec_xor min ..." is also accepted.
+struct Case { string name, key, sizing; };
+struct Meas { int c; Vec a, b; double ps; };
+struct MeasSet { vector<Case> cases; vector<Meas> m; };
+static Config keyConfig(const string& key) {
+    stringstream ss(key); string a, x, f; getline(ss, a, ':'); getline(ss, x, ':'); getline(ss, f, ':');
+    Config c{a == "spec" ? A_SPEC : A_CSA, x == "nand" ? X_NAND4 : x == "cmos" ? X_CMOS12 : X_AOI10,
+             f == "mirror" ? FA_MIRROR : FA_XOR, a == "spec" ? R_AND : R_NONE, M_FIXED};
+    return c;
+}
+static Design* buildCase(const Case& cs, Params p) {
+    const string& z = cs.sizing;
+    if (z.rfind("stack", 0) == 0) { if (z.size() > 6) p.stack_beta = stod(z.substr(7)) / 10; }
+    Design* d = new Design(keyConfig(cs.key), p, z.rfind("stack", 0) == 0 ? SZ_STACK : SZ_MIN);
+    for (size_t i = 0; i < d->c.gates.size(); i++) {
+        const string& l = d->c.gates[i].label;
+        bool mul = l.rfind("MUL", 0) == 0, out = l.rfind("OUT/", 0) == 0 && l.rfind("OUT/INV", 0) != 0;
+        bool fa = !mul && !out;   // counters plus the inverters that feed the output gates
+        if (z == "all2" || (z == "mul2" && mul) || (z == "fa2" && fa) || (z == "out2" && out)) d->c.setMult(i, 2);
+    }
+    d->c.finalize();
+    return d;
+}
+static MeasSet loadMeas(const string& paths) {   // comma-separated list of files
+    MeasSet S; map<string, int> idx; string line;
+    stringstream pl(paths); string path;
+    while (getline(pl, path, ',')) {
+    ifstream f(path);
+    if (!f) { fprintf(stderr, "cannot open %s\n", path.c_str()); exit(1); }
+    map<string, string> old = {{"spec_xor", "spec:aoi:xor"}, {"csa_xor", "csa:aoi:xor"}, {"csa_mirror", "csa:aoi:mirror"}};
+    while (getline(f, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        istringstream is(line); vector<string> head(3); is >> head[0] >> head[1];
+        Case cs;
+        if (head[1].find(':') != string::npos) { is >> head[2]; cs = {head[0], head[1], head[2]}; }
+        else { if (!old.count(head[0])) continue; cs = {head[0] + "_" + head[1], old[head[0]], head[1] == "stack" ? "stack_b15" : head[1]}; }
+        int a[5], b[5]; double ps; for (int& x : a) is >> x; for (int& x : b) is >> x; is >> ps;
+        if (!is) continue;
+        if (!idx.count(cs.name)) { idx[cs.name] = S.cases.size(); S.cases.push_back(cs); }
+        Meas r; r.c = idx[cs.name];
+        r.a = {enc2(a[0]), enc2(a[1]), enc2(a[2]), enc2(a[3]), enc2(a[4])};
+        r.b = {enc2(b[0]), enc2(b[1]), enc2(b[2]), enc2(b[3]), enc2(b[4])};
+        r.ps = ps; S.m.push_back(r);
+    }
+    }
+    return S;
+}
+struct CalResult { double rms, worstErr; vector<double> modelWorst, measWorst, fins; vector<double> pred; };
+static CalResult evaluateCal(const MeasSet& S, const Params& p) {
+    const auto& M = S.m; int nc = S.cases.size();
+    CalResult r; r.pred.assign(M.size(), 0); r.modelWorst.assign(nc, 0); r.measWorst.assign(nc, 0); r.fins.assign(nc, 0);
+    vector<future<void>> fut;
+    for (int d = 0; d < nc; d++) fut.push_back(async(launch::async, [&, d]() {
+        unique_ptr<Design> des(buildCase(S.cases[d], p));
+        r.fins[d] = des->c.fins();
+        Sim s(*des);
+        for (size_t i = 0; i < M.size(); i++) if (M[i].c == d) { int ln; r.pred[i] = s.transition(M[i].a, M[i].b, ln); }
+    }));
+    for (auto& f : fut) f.get();
+    double se = 0;
+    for (size_t i = 0; i < M.size(); i++) {
+        double e = (r.pred[i] - M[i].ps) / M[i].ps; se += e * e;
+        r.modelWorst[M[i].c] = max(r.modelWorst[M[i].c], r.pred[i]);
+        r.measWorst[M[i].c] = max(r.measWorst[M[i].c], M[i].ps);
+    }
+    r.rms = sqrt(se / M.size());
+    r.worstErr = 0;
+    for (int d = 0; d < nc; d++) r.worstErr = max(r.worstErr, fabs(r.modelWorst[d] / r.measWorst[d] - 1));
+    return r;
+}
+// Fitted parameters, in log space: mu, gamma, gint, cload, ks (tau has a closed form).
+static double* pref(Params& p, int i) { double* r[] = {&p.mu, &p.gamma, &p.gint, &p.cload, &p.ks}; return r[i]; }
+static vector<double> getP(Params p, const vector<int>& fr) { vector<double> x; for (int i : fr) x.push_back(log(*pref(p, i))); return x; }
+static Params setP(Params p, const vector<int>& fr, const vector<double>& x) { for (size_t k = 0; k < fr.size(); k++) *pref(p, fr[k]) = exp(x[k]); if (p.ks > 1) p.ks = 1; return p; }
+// Objective: per-transition relative RMS error, plus the worst-case delay error of each circuit
+// (the number the grade uses) so the fit cannot trade the slowest cases away.
+static double objective(const MeasSet& M, const Params& p) { auto r = evaluateCal(M, p); return r.rms + r.worstErr; }
+static Params calibrate(const MeasSet& M, Params p0, const vector<int>& fr) {
+    // tau has a closed form given the other parameters (least squares in relative error)
+    auto fitTau = [&](Params p) {
+        p.tau = 1; auto r = evaluateCal(M, p); double num = 0, den = 0;
+        for (size_t i = 0; i < M.m.size(); i++) { double q = r.pred[i] / M.m[i].ps; num += q; den += q * q; }
+        p.tau = num / den; return p;
+    };
+    int n = fr.size(); vector<vector<double>> S; vector<double> F;
+    auto f = [&](vector<double> x) { Params q = fitTau(setP(p0, fr, x)); return objective(M, q); };
+    vector<double> x0 = getP(p0, fr);
+    S.push_back(x0); F.push_back(f(x0));
+    for (int i = 0; i < n; i++) { auto x = x0; x[i] += 0.4; S.push_back(x); F.push_back(f(x)); }
+    for (int it = 0; it < 400; it++) {
+        vector<int> o(n + 1); iota(o.begin(), o.end(), 0);
+        sort(o.begin(), o.end(), [&](int a, int b) { return F[a] < F[b]; });
+        vector<vector<double>> S2; vector<double> F2; for (int i : o) { S2.push_back(S[i]); F2.push_back(F[i]); } S = S2; F = F2;
+        if (F[n] - F[0] < 1e-5) break;
+        vector<double> c(n, 0); for (int i = 0; i < n; i++) for (int k = 0; k < n; k++) c[k] += S[i][k] / n;
+        auto mix = [&](double t) { vector<double> x(n); for (int k = 0; k < n; k++) x[k] = c[k] + t * (S[n][k] - c[k]); return x; };
+        auto xr = mix(-1); double fr = f(xr);
+        if (fr < F[0]) { auto xe = mix(-2); double fe = f(xe); if (fe < fr) { S[n] = xe; F[n] = fe; } else { S[n] = xr; F[n] = fr; } }
+        else if (fr < F[n - 1]) { S[n] = xr; F[n] = fr; }
+        else {
+            auto xc = mix(fr < F[n] ? -0.5 : 0.5); double fc = f(xc);
+            if (fc < min(fr, F[n])) { S[n] = xc; F[n] = fc; }
+            else for (int i = 1; i <= n; i++) { for (int k = 0; k < n; k++) S[i][k] = S[0][k] + 0.5 * (S[i][k] - S[0][k]); F[i] = f(S[i]); }
+        }
+    }
+    int b = min_element(F.begin(), F.end()) - F.begin();
+    return fitTau(setP(p0, fr, S[b]));
+}
+static void calReport(const MeasSet& S, const Params& p, const char* title) {
+    auto r = evaluateCal(S, p); const auto& M = S.m; int nc = S.cases.size();
+    printf("%s\n  tau=%.3f ps  mu=%.3f  gamma=%.3f  gint=%.3f  cload=%.2f C_fin  ks=%.3f\n", title, p.tau, p.mu, p.gamma, p.gint, p.cload, p.ks);
+    printf("  per-transition RMS error %.1f%%, worst-case delay error up to %.1f%%\n", 100 * r.rms, 100 * r.worstErr);
+    printf("  %-26s %-16s %-10s %5s %5s %10s %10s %7s %6s %6s %5s\n", "case", "design", "sizing", "fins", "trans", "Spectre", "model", "error", "S#", "M#", "rho");
+    for (int d = 0; d < nc; d++) {
+        vector<int> idx; for (size_t i = 0; i < M.size(); i++) if (M[i].c == d) idx.push_back(i);
+        auto rankBy = [&](auto key) { vector<int> o = idx; sort(o.begin(), o.end(), [&](int x, int y) { return key(x) > key(y); }); vector<double> rk(M.size()); for (size_t k = 0; k < o.size(); k++) rk[o[k]] = k; return rk; };
+        auto rm = rankBy([&](int i) { return r.pred[i]; }), rs = rankBy([&](int i) { return M[i].ps; });
+        int sw = *max_element(idx.begin(), idx.end(), [&](int x, int y) { return M[x].ps < M[y].ps; });
+        int mw = *max_element(idx.begin(), idx.end(), [&](int x, int y) { return r.pred[x] < r.pred[y]; });
+        double n = idx.size(), dd = 0; for (int i : idx) dd += (rm[i] - rs[i]) * (rm[i] - rs[i]);
+        printf("  %-26s %-16s %-10s %5.0f %5zu %7.1f ps %7.1f ps %+6.1f%% %6.0f %6.0f %5.2f\n", S.cases[d].name.c_str(), S.cases[d].key.c_str(), S.cases[d].sizing.c_str(),
+               r.fins[d], idx.size(), r.measWorst[d], r.modelWorst[d], 100 * (r.modelWorst[d] / r.measWorst[d] - 1), rm[sw] + 1, rs[mw] + 1, 1 - 6 * dd / (n * (n * n - 1)));
+    }
+    printf("  S# = rank of Spectre's slowest transition in the model's order; M# = rank of the model's slowest in Spectre's; rho = rank correlation\n");
+    vector<int> om(nc), oo(nc); iota(om.begin(), om.end(), 0); iota(oo.begin(), oo.end(), 0);
+    sort(om.begin(), om.end(), [&](int a, int b) { return r.measWorst[a] < r.measWorst[b]; });
+    sort(oo.begin(), oo.end(), [&](int a, int b) { return r.modelWorst[a] < r.modelWorst[b]; });
+    int agree = 0, pairs = 0;
+    for (int i = 0; i < nc; i++) for (int j = i + 1; j < nc; j++) { pairs++; agree += ((r.measWorst[i] < r.measWorst[j]) == (r.modelWorst[i] < r.modelWorst[j])); }
+    printf("  case ranking agreement: %d of %d pairs ordered the same as Spectre\n", agree, pairs);
 }
 
 // ------------------------------------------------------- sizing optimizer
-// Greedy: repeatedly upsize (x1.25) the critical-path gate with the best
-// delay gain per unit of added area, checking candidates on the slowest
-// transitions and re-timing all transitions after each accepted move.
-struct SizePoint { double area, worst; vector<double> sizes; };
+// Greedy in whole fins: add 1 to the fin multiplier of the critical-path gate with the best
+// delay gain per added cell area; stop when no move helps. Starts from min sizing.
+struct SizePoint { double area, fins, worst; vector<int> mult; };
 static vector<SizePoint> optimizeSizing(Design& d, int maxIter = 80) {
     vector<SizePoint> curve;
-    auto snap = [&]() { vector<double> s; for (auto& g : d.c.gates) s.push_back(g.size); return s; };
-    Timing full = timeIt(d, nullptr, 400);
-    curve.push_back({d.c.area(), full.worst, snap()});
+    auto snap = [&]() { vector<int> s; for (auto& g : d.c.gates) s.push_back(g.mult); return s; };
+    Timing full = timeIt(d, nullptr, 200);
+    curve.push_back({d.c.area_um2(), d.c.fins(), full.worst, snap()});
     for (int it = 0; it < maxIter; it++) {
         set<int> cand;
         for (auto& [net, t] : full.path) if (d.c.driver[net] >= 0) cand.insert(d.c.driver[net]);
-        // also the gates driving side inputs of path gates (load reduction is not modeled by upsizing,
-        // but upsizing a fanout-heavy driver helps): include drivers of the path gates' inputs
-        double A0 = d.c.area(), base = full.worst;
+        double A0 = d.c.area_um2(), F0 = d.c.fins(), base = full.worst;
         int bestG = -1; double bestGain = 0;
         for (int g : cand) {
-            double old = d.c.gates[g].size;
-            d.c.resize(g, old * 1.25); d.c.finalize();
+            int old = d.c.gates[g].mult;
+            d.c.setMult(g, old + 1); d.c.finalize();
             Timing t = timeIt(d, &full.topPairs, 0);
-            double dA = d.c.area() - A0, gain = (base - t.worst) / dA;
+            double dA = d.c.area_um2() - A0, dF = d.c.fins() - F0;
+            double gain = (base - t.worst) / max(dA, 1e-4 * dF);  // a fin that adds no column still costs a little
             if (gain > bestGain) { bestGain = gain; bestG = g; }
-            d.c.resize(g, old); d.c.finalize();
+            d.c.setMult(g, old); d.c.finalize();
         }
         if (bestG < 0) break;
-        double old = d.c.gates[bestG].size;
-        d.c.resize(bestG, old * 1.25); d.c.finalize();
-        Timing nf = timeIt(d, nullptr, 400);
-        if (nf.worst >= base * 0.999) { d.c.resize(bestG, old); d.c.finalize(); break; }
+        int old = d.c.gates[bestG].mult;
+        d.c.setMult(bestG, old + 1); d.c.finalize();
+        Timing nf = timeIt(d, nullptr, 200);
+        if (nf.worst >= base * 0.999) { d.c.setMult(bestG, old); d.c.finalize(); break; }
         full = nf;
-        curve.push_back({d.c.area(), full.worst, snap()});
+        curve.push_back({d.c.area_um2(), d.c.fins(), full.worst, snap()});
     }
     return curve;
 }
-static void applySizes(Design& d, const vector<double>& s) {
-    for (size_t i = 0; i < s.size(); i++) d.c.resize(i, s[i]);
+static void applyMults(Design& d, const vector<int>& m) {
+    for (size_t i = 0; i < m.size(); i++) d.c.setMult(i, m[i]);
     d.c.finalize();
 }
 
@@ -459,9 +684,8 @@ static string designJson(Design& d, const Timing& T, const string& sizing) {
     const Circuit& c = d.c; ostringstream o; o.precision(5);
     o << "{\"arch\":\"" << AN[d.cf.a] << "\",\"ai\":" << d.cf.a << ",\"xor\":\"" << XN[d.cf.x] << "\",\"xi\":" << d.cf.x
       << ",\"fa\":\"" << FN[d.cf.fa] << "\",\"fi\":" << d.cf.fa << ",\"relu\":\"" << RN[d.cf.r] << "\",\"ri\":" << d.cf.r
-      << ",\"sizing\":\"" << sizing << "\",\"trans\":" << c.transistors() << ",\"area\":" << c.area()
-      << ",\"worst\":" << T.worst << ",\"fo4\":" << fo4(c.p) << ",\"rise\":" << T.rise << ",\"fall\":" << T.fall
-      << ",\"wfix\":" << T.wfix << ",\"wfixFrom\":" << vecJson(T.fi) << ",\"wfixTo\":" << vecJson(T.fj)
+      << ",\"sizing\":\"" << sizing << "\",\"trans\":" << c.transistors() << ",\"fins\":" << c.fins() << ",\"area\":" << c.area_um2()
+      << ",\"worst\":" << T.worst << ",\"rise\":" << T.rise << ",\"fall\":" << T.fall
       << ",\"worstFrom\":" << vecJson(T.wi) << ",\"worstTo\":" << vecJson(T.wj) << ",\"blocks\":[";
     for (size_t i = 0; i < c.blocks.size(); i++) { o << (i ? "," : "") << "["; for (size_t k = 0; k < c.blocks[i].size(); k++) o << (k ? "," : "") << "\"" << c.blocks[i][k] << "\""; o << "]"; }
     o << "],\"path\":[";
@@ -478,7 +702,7 @@ static string designJson(Design& d, const Timing& T, const string& sizing) {
     for (size_t i = 0; i < c.gates.size(); i++) {
         const Gate& g = c.gates[i];
         o << (i ? "," : "") << "{\"label\":\"" << jesc(g.label) << "\",\"type\":\"" << g.prim->name << "\",\"out\":" << g.out
-          << ",\"ndev\":" << g.ndev << ",\"size\":" << g.size << ",\"in\":[";
+          << ",\"ndev\":" << g.ndev << ",\"size\":" << g.mult << ",\"in\":[";
         for (size_t k = 0; k < g.in.size(); k++) o << (k ? "," : "") << g.in[k];
         o << "],\"pins\":[";
         for (size_t k = 0; k < g.prim->pins.size(); k++) o << (k ? "," : "") << "\"" << g.prim->pins[k] << "\"";
@@ -489,12 +713,8 @@ static string designJson(Design& d, const Timing& T, const string& sizing) {
 }
 
 // ------------------------------------------------------------ experiments
-struct Explored {
-    Config cf;
-    double area0, worst0, areaB, worstB, areaF, worstF; int trans;
-    string jUnit, jBal, jFast;
-    vector<pair<double, double>> curve;
-};
+struct Pt { double area, fins, worst; int trans, row; };
+struct Explored { Config cf; Pt u[4], st, bal, fast; vector<string> json; };
 static vector<Config> allConfigs() {
     vector<Config> v;
     for (XorStyle x : {X_NAND4, X_CMOS12, X_AOI10}) for (FaStyle fa : {FA_XOR, FA_MIRROR}) {
@@ -505,41 +725,81 @@ static vector<Config> allConfigs() {
 }
 static Explored explore(Config cf, Params p, bool json) {
     Explored e; e.cf = cf;
-    Design d(cf, p);
-    if (funcErrors(d)) { fprintf(stderr, "functional error in %s\n", AN[cf.a]); exit(1); }
-    Timing t0 = timeIt(d, nullptr, 0);
-    e.trans = d.c.transistors(); e.area0 = d.c.area(); e.worst0 = t0.worst;
-    if (json) e.jUnit = designJson(d, t0, "unit");
-    auto curve = optimizeSizing(d);
-    for (auto& pt : curve) e.curve.push_back({pt.area, pt.worst});
-    // fastest = last point; balanced = min worst*area
-    const SizePoint* bal = &curve[0];
-    for (auto& pt : curve) if (pt.worst * pt.area < bal->worst * bal->area) bal = &pt;
-    const SizePoint& fast = curve.back();
-    e.areaB = bal->area; e.worstB = bal->worst; e.areaF = fast.area; e.worstF = fast.worst;
-    if (json) {
-        applySizes(d, bal->sizes); e.jBal = designJson(d, timeIt(d, nullptr, 0), "balanced");
-        applySizes(d, fast.sizes); e.jFast = designJson(d, timeIt(d, nullptr, 0), "fastest");
+    auto pt = [](Design& d, double T) { return Pt{d.c.area_um2(), d.c.fins(), T, d.c.transistors(), d.c.row()}; };
+    Design ds(cf, p, SZ_STACK);
+    if (funcErrors(ds)) { fprintf(stderr, "functional error in %s\n", AN[cf.a]); exit(1); }
+    Timing ts = timeIt(ds, nullptr, 0); e.st = pt(ds, ts.worst);
+    Timing t1; vector<int> bestM, fastM; double bestTA = INF, fastT = INF;
+    for (int f = 1; f <= 3; f++) {
+        Design d(cf, p, SZ_MIN);
+        for (size_t i = 0; i < d.c.gates.size(); i++) d.c.setMult(i, f);
+        d.c.finalize();
+        Timing t = timeIt(d, nullptr, 0); e.u[f] = pt(d, t.worst);
+        if (f == 1) t1 = t;
+        if (json) e.json.push_back(designJson(d, t, "fin" + to_string(f)));
+        for (auto& sp : optimizeSizing(d)) {
+            if (sp.worst * sp.area < bestTA) { bestTA = sp.worst * sp.area; bestM = sp.mult; e.bal = {sp.area, sp.fins, sp.worst, e.st.trans, 0}; }
+            if (sp.worst < fastT) { fastT = sp.worst; fastM = sp.mult; e.fast = {sp.area, sp.fins, sp.worst, e.st.trans, 0}; }
+        }
     }
+    if (ts.worst * e.st.area < bestTA) { e.bal = e.st; bestM.clear(); }
+    Design d(cf, p, SZ_MIN);
+    if (!bestM.empty()) { applyMults(d, bestM); e.bal.row = d.c.row(); }
+    if (json) e.json.push_back(designJson(ds, ts, "stack"));
+    applyMults(d, fastM); e.fast.row = d.c.row();
     return e;
 }
 
 int main(int argc, char** argv) {
-    Params p; string jsonPath;
-    for (int i = 1; i + 1 < argc; i += 2) {
+    Params p; string jsonPath, calPath, valPath; bool quick = false;
+    for (int i = 1; i < argc; i++) {
         string k = argv[i];
-        if (k == "--json") { jsonPath = argv[i + 1]; continue; }
-        double v = atof(argv[i + 1]);
-        if (k == "--beta") p.beta = v; else if (k == "--mu") p.mu = v; else if (k == "--gamma") p.gamma = v;
-        else if (k == "--cload") p.cload = v; else if (k == "--rdrv") p.rdrv = v;
+        if (k == "--quick") { quick = true; continue; }
+        if (i + 1 >= argc) break;
+        string v = argv[++i];
+        if (k == "--json") jsonPath = v; else if (k == "--calibrate") calPath = v; else if (k == "--validate") valPath = v;
+        else if (k == "--tau") p.tau = stod(v); else if (k == "--mu") p.mu = stod(v); else if (k == "--gamma") p.gamma = stod(v);
+        else if (k == "--gint") p.gint = stod(v); else if (k == "--cload") p.cload = stod(v); else if (k == "--stack_beta") p.stack_beta = stod(v);
     }
-    double F = fo4(p);
-    printf("Params: beta=%.2f mu=%.2f gamma=%.2f cload=%.1f rdrv=%.1f   1 FO4 = %.1f tau\n", p.beta, p.mu, p.gamma, p.cload, p.rdrv, F);
-    printf("Area = sum of device widths in Wunit (proxy for layout area). %zu output-changing transitions per design.\n\n", PAIRS.size());
+    if (!valPath.empty()) {   // check the current parameters against data they were not fitted to
+        auto M = loadMeas(valPath);
+        printf("Validation data: %zu Spectre transitions in %zu circuits from %s\n\n", M.m.size(), M.cases.size(), valPath.c_str());
+        calReport(M, p, "Current parameters");
+        return 0;
+    }
+    if (!calPath.empty()) {
+        auto M = loadMeas(calPath);
+        printf("Calibration data: %zu Spectre transitions in %zu circuits from %s\n\n", M.m.size(), M.cases.size(), calPath.c_str());
+        Params p0 = p; p0.gamma = 1; p0.gint = 0.5; p0.cload = 20; p0.mu = 1.2; p0.ks = 1;
+        Params pold = p0; pold.mu = 2.0; pold.gint = 1e-6; pold.tau = 1; pold.ks = 1;  // the previous model's assumptions
+        {   // old model: stack nodes ignored, mu = 2; tau and cload refit so only the physics differs
+            auto fitOld = [&](Params q) { q.tau = 1; auto r = evaluateCal(M, q); double a = 0, b = 0; for (size_t i = 0; i < M.m.size(); i++) { double z = r.pred[i] / M.m[i].ps; a += z; b += z * z; } q.tau = a / b; return q; };
+            pold = fitOld(pold);
+            calReport(M, pold, "Previous assumptions (mu=2, no stack-node cap, tau fitted)");
+        }
+        Params pa = calibrate(M, p0, {0, 1, 2, 3});
+        printf("\n"); calReport(M, pa, "Fit A: stack-node cap, linear stacks, mu free");
+        Params pb = calibrate(M, p0, {1, 2, 3, 4});
+        printf("\n"); calReport(M, pb, "Fit B: stack-node cap, stack factor ks, mu fixed at the measured 1.20");
+        Params pc = calibrate(M, pb, {0, 1, 2, 3, 4});
+        printf("\n"); calReport(M, pc, "Fit C: everything free");
+        return 0;
+    }
+    if (quick) {
+        for (auto& cf : allConfigs()) for (Sizing s : {SZ_MIN, SZ_STACK}) {
+            Design d(cf, p, s); Timing t = timeIt(d, nullptr, 0);
+            printf("%-17s %-14s %-13s %-24s %-5s T=%6.1f ps fins=%4.0f A=%6.3f um2 TA=%7.2f\n", AN[cf.a], XN[cf.x], FN[cf.fa], RN[cf.r], SZN[s], t.worst, d.c.fins(), d.c.area_um2(), t.worst * d.c.area_um2());
+        }
+        return 0;
+    }
+
+    printf("Model: ASAP7-calibrated  tau=%.3f ps  mu=%.2f  gamma=%.2f  gint=%.2f  cload=%.1f C_fin  stack_beta=%.2f\n", p.tau, p.mu, p.gamma, p.gint, p.cload, p.stack_beta);
+    printf("Delays in ps (pre-layout, TT 25 C 0.9 V). Area: estimated floorplan bounding box (area-study template: 270 nm cells, %d-track channels, 72 nm margin).\n", p.tracks);
+    printf("%zu output-changing transitions per design (weights held fixed).\n\n", PAIRS.size());
 
     printf("=== Functional check, 243 valid combinations ===\n");
     for (Config cf : {Config{A_SPEC, X_CMOS12, FA_XOR, R_AND, M_SCREENSHOT}, Config{A_SPEC, X_CMOS12, FA_XOR, R_AND, M_FIXED}, Config{A_CSA, X_CMOS12, FA_XOR, R_NONE, M_FIXED}}) {
-        Design d(cf, p); vector<Vec> ex; int e = funcErrors(d, &ex);
+        Design d(cf, p, SZ_MIN); vector<Vec> ex; int e = funcErrors(d, &ex);
         printf("%-17s multiplier=%-10s errors=%d\n", AN[cf.a], MN[cf.m], e);
         for (auto& v : ex) printf("    e.g. %s  expected %d\n", vstr(v).c_str(), reference(v));
     }
@@ -549,66 +809,56 @@ int main(int argc, char** argv) {
     for (auto& cf : cfgs) fut.push_back(async(launch::async, explore, cf, p, !jsonPath.empty()));
     vector<Explored> R; for (auto& f : fut) R.push_back(f.get());
 
-    printf("\n=== All designs (unit sizing, then after the sizing optimizer) ===\n");
-    printf("%-17s %-14s %-13s %-22s %5s | %6s %7s %5s | %6s %7s %5s | %6s %7s %5s\n", "Architecture", "XOR", "Full adder", "ReLU", "Trans",
-           "Area", "T", "FO4", "Area", "T", "FO4", "Area", "T", "FO4");
-    printf("%-75s | %-20s | %-20s | %-20s\n", "", "unit", "balanced (min T*A)", "fastest");
+    auto score = [](const Explored& e) { return e.bal.worst * e.bal.area; };
     vector<int> order(R.size()); iota(order.begin(), order.end(), 0);
-    sort(order.begin(), order.end(), [&](int a, int b) { return R[a].worstB * R[a].areaB < R[b].worstB * R[b].areaB; });
+    sort(order.begin(), order.end(), [&](int a, int b) { return score(R[a]) < score(R[b]); });
+    double refTA = score(R[order[0]]);
+
+    printf("\n=== All designs: worst delay T (ps) / floorplan area estimate A (um2); f/A relative to the best ===\n");
+    printf("%-17s %-14s %-13s %-23s %5s | %-14s %-14s %-14s | %-14s | %-19s | %5s\n", "Architecture", "XOR", "Full adder", "ReLU", "Trans",
+           "1 fin", "2 fins", "3 fins", "stack", "optimized (cell h)", "f/A");
     for (int i : order) {
         auto& e = R[i];
-        printf("%-17s %-14s %-13s %-22s %5d | %6.0f %7.1f %5.1f | %6.0f %7.1f %5.1f | %6.0f %7.1f %5.1f\n", AN[e.cf.a], XN[e.cf.x], FN[e.cf.fa], RN[e.cf.r], e.trans,
-               e.area0, e.worst0, e.worst0 / F, e.areaB, e.worstB, e.worstB / F, e.areaF, e.worstF, e.worstF / F);
+        printf("%-17s %-14s %-13s %-23s %5d | %5.1f / %5.3f  %5.1f / %5.3f  %5.1f / %5.3f  | %5.1f / %5.3f  | %5.1f / %5.3f (%d) | %5.2f\n",
+               AN[e.cf.a], XN[e.cf.x], FN[e.cf.fa], RN[e.cf.r], e.st.trans, e.u[1].worst, e.u[1].area, e.u[2].worst, e.u[2].area, e.u[3].worst, e.u[3].area,
+               e.st.worst, e.st.area, e.bal.worst, e.bal.area, e.bal.row, refTA / score(e));
     }
 
-    // detail for best of each architecture
     for (Arch a : {A_SPEC, A_CSA}) {
-        int bi = -1;
-        for (int i : order) if (R[i].cf.a == a) { bi = i; break; }
+        int bi = -1; for (int i : order) if (R[i].cf.a == a) { bi = i; break; }
         auto& e = R[bi];
-        Design d(e.cf, p);
-        Timing t = timeIt(d, nullptr, 0);
+        Design d(e.cf, p, SZ_MIN); Timing t = timeIt(d, nullptr, 0);
         printf("\nBest %s: %s / %s / %s\n", AN[a], XN[e.cf.x], FN[e.cf.fa], RN[e.cf.r]);
-        printf("  worst-case vector (weights fixed): [%s] -> [%s]  %.1f tau\n", vstr(VECS[t.fi]).c_str(), vstr(VECS[t.fj]).c_str(), t.wfix);
-        printf("  critical path (unit sizing):");
+        printf("  worst-case testbench vector (min sizing): [%s] -> [%s]  %.1f ps\n", vstr(VECS[t.wi]).c_str(), vstr(VECS[t.wj]).c_str(), t.worst);
+        printf("  critical path:");
         for (auto& [net, tt] : t.path) printf(" %s", d.c.driver[net] >= 0 ? d.c.gates[d.c.driver[net]].label.c_str() : d.c.netName[net].c_str());
-        printf("\n  sizing curve (area, T):");
-        for (size_t k = 0; k < e.curve.size(); k += max<size_t>(1, e.curve.size() / 8)) printf(" (%.0f, %.1f)", e.curve[k].first, e.curve[k].second);
-        printf(" ... (%.0f, %.1f)\n", e.curve.back().first, e.curve.back().second);
+        printf("\n");
     }
 
-    // beta sweep for the best design of each architecture (unit sizing)
-    printf("\n=== Beta sweep, unit sizing ===\n%6s", "beta");
+    printf("\n=== Stack sizing P/N ratio sweep (best design of each architecture) ===\n%10s", "stack_beta");
     vector<int> best2;
-    for (Arch a : {A_SPEC, A_CSA}) for (int i : order) if (R[i].cf.a == a) { best2.push_back(i); printf(" %18s", AN[a]); break; }
+    for (Arch a : {A_SPEC, A_CSA}) for (int i : order) if (R[i].cf.a == a) { best2.push_back(i); printf(" %24s", AN[a]); break; }
     printf("\n");
     string betaJson = "[";
-    for (double beta = 1.0; beta <= 3.01; beta += 0.25) {
-        printf("%6.2f", beta);
-        betaJson += (beta > 1.0 ? "," : "") + string("{\"beta\":") + to_string(beta);
+    bool firstB = true;
+    for (double beta : {1.0, 1.2, 1.5, 2.0}) {
+        printf("%10.2f", beta);
+        betaJson += string(firstB ? "" : ",") + "{\"beta\":" + to_string(beta); firstB = false;
         for (int k = 0; k < 2; k++) {
-            Params q = p; q.beta = beta;
-            Design d(R[best2[k]].cf, q);
-            Timing t = timeIt(d, nullptr, 0);
-            printf(" %12.1f tau %4.0fA", t.worst, d.c.area());
-            betaJson += ",\"" + string(k ? "csa" : "spec") + "\":" + to_string(t.worst) + ",\"" + string(k ? "csaA" : "specA") + "\":" + to_string(d.c.area());
+            Params q = p; q.stack_beta = beta;
+            Design d(R[best2[k]].cf, q, SZ_STACK); Timing t = timeIt(d, nullptr, 0);
+            printf(" %9.1f ps %7.3f um2  ", t.worst, d.c.area_um2());
+            betaJson += ",\"" + string(k ? "csa" : "spec") + "\":" + to_string(t.worst) + ",\"" + string(k ? "csaA" : "specA") + "\":" + to_string(d.c.area_um2());
         }
-        betaJson += "}";
-        printf("\n");
+        betaJson += "}"; printf("\n");
     }
     betaJson += "]";
 
     if (!jsonPath.empty()) {
         FILE* f = fopen(jsonPath.c_str(), "w");
-        fprintf(f, "{\"params\":{\"beta\":%g,\"mu\":%g,\"gamma\":%g,\"cload\":%g,\"rdrv\":%g},\"beta\":%s,\"designs\":[", p.beta, p.mu, p.gamma, p.cload, p.rdrv, betaJson.c_str());
+        fprintf(f, "{\"params\":{\"tau\":%g,\"mu\":%g,\"gamma\":%g,\"gint\":%g,\"cload\":%g,\"stack_beta\":%g},\"beta\":%s,\"designs\":[", p.tau, p.mu, p.gamma, p.gint, p.cload, p.stack_beta, betaJson.c_str());
         bool first = true;
-        for (auto& e : R) for (auto* j : {&e.jUnit, &e.jBal, &e.jFast}) { fprintf(f, "%s%s", first ? "" : ",", j->c_str()); first = false; }
-        fprintf(f, "],\"curves\":[");
-        for (size_t i = 0; i < R.size(); i++) {
-            fprintf(f, "%s{\"ai\":%d,\"xi\":%d,\"fi\":%d,\"ri\":%d,\"pts\":[", i ? "," : "", R[i].cf.a, R[i].cf.x, R[i].cf.fa, R[i].cf.r);
-            for (size_t k = 0; k < R[i].curve.size(); k++) fprintf(f, "%s[%.2f,%.3f]", k ? "," : "", R[i].curve[k].first, R[i].curve[k].second);
-            fprintf(f, "]}");
-        }
+        for (auto& e : R) for (auto& j : e.json) { fprintf(f, "%s%s", first ? "" : ",", j.c_str()); first = false; }
         fprintf(f, "]}\n"); fclose(f);
         printf("\nwrote %s\n", jsonPath.c_str());
     }

@@ -1,53 +1,65 @@
-<title>ECE555 Neuron Netlist</title>
+<title>ECE555 Neuron Design</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Layout: one plain column of sections; tables and drawings scroll inside their own boxes. */
+/* Layout: one plain reading column; wide tables and drawings scroll inside their own boxes. */
 :root {
-  --bg: #ffffff; --fg: #111111; --muted: #555b62; --line: #d7dadd; --wire: #9aa1a8; --soft: #f4f5f6;
-  --crit: #c2410c; --sel: #1f5fd0;
+  --bg: #ffffff; --fg: #15181b; --muted: #5a6168; --line: #d9dcdf; --wire: #9aa1a8; --soft: #f3f5f6;
+  --crit: #c2410c; --sel: #1f5fd0; --good: #1a7f37;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #121416; --fg: #e8eaec; --muted: #9aa1a8; --line: #33383d; --wire: #59616a; --soft: #1b1e21; --crit: #ff8a47; --sel: #79a8ff; color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #121416; --fg: #e8eaec; --muted: #9aa1a8; --line: #33383d; --wire: #59616a; --soft: #1b1e21; --crit: #ff8a47; --sel: #79a8ff; --good: #4ac26b; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #121416; --fg: #e8eaec; --muted: #9aa1a8; --line: #33383d; --wire: #59616a; --soft: #1b1e21; --crit: #ff8a47; --sel: #79a8ff; color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #121416; --fg: #e8eaec; --muted: #9aa1a8; --line: #33383d; --wire: #59616a; --soft: #1b1e21; --crit: #ff8a47; --sel: #79a8ff; --good: #4ac26b; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--sans); padding-block: 20px 40px;
+body { background: var(--bg); color: var(--fg); font: 14px/1.55 var(--sans); padding-block: 22px 48px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-main { max-width: 1200px; margin: 0 auto; display: grid; gap: 28px; }
-h1 { font-size: 22px; margin: 0 0 4px; }
-h2 { font-size: 16px; margin: 0 0 8px; }
-p { margin: 0; max-width: 80ch; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 34px; }
+h1 { font-size: 24px; margin: 0 0 4px; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0 0 8px; text-wrap: balance; }
+h3 { font-size: 14px; margin: 14px 0 6px; }
+p { margin: 0 0 8px; max-width: 78ch; }
+ul, ol { margin: 4px 0 8px; padding-left: 20px; max-width: 78ch; }
+li { margin: 3px 0; }
 .muted { color: var(--muted); }
+.small { font-size: 12.5px; }
 code, .mono { font-family: var(--mono); font-size: 12.5px; }
 section { min-width: 0; }
-.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; }
-label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
-select { font: 14px var(--sans); padding: 4px 6px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; }
-select:disabled { opacity: 0.5; }
-.summary { display: flex; flex-wrap: wrap; gap: 6px 28px; margin-top: 12px; }
-.summary b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
-.tb { margin-top: 8px; }
-.box { overflow-x: auto; border: 1px solid var(--line); }
-svg { display: block; }
-svg text { font-family: var(--mono); fill: var(--fg); }
-.zoom { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
-button { font: 12px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 3px 9px; cursor: pointer; }
-button[aria-pressed="true"] { border-color: var(--fg); font-weight: 600; }
-button:focus-visible, select:focus-visible, tr[tabindex]:focus-visible, .gate:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
-.key { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
-.key span { color: var(--crit); font-weight: 600; }
-.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.rec { border-left: 3px solid var(--good); padding: 4px 0 4px 14px; }
+.rec dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0 0; }
+.rec dt { color: var(--muted); }
+.rec dd { margin: 0; }
+.tag { display: inline-block; font-size: 11px; padding: 0 6px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); vertical-align: 1px; }
+.tag.m { border-color: var(--good); color: var(--good); }
+.box { overflow-x: auto; }
+.boxed { overflow-x: auto; border: 1px solid var(--line); }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 5px 8px; border-bottom: 1px solid var(--fg); white-space: nowrap; }
 td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 td.c { font-family: var(--mono); font-size: 12.5px; }
+td.wrap { white-space: normal; min-width: 200px; }
+tr.hl td { font-weight: 600; }
 tr.pick { cursor: pointer; }
 tr.pick:hover td { background: var(--soft); }
 tr.cur td { background: var(--soft); font-weight: 600; }
+.bar { display: inline-block; height: 8px; background: var(--muted); opacity: .5; vertical-align: middle; border-radius: 1px; }
+tr.hl .bar { background: var(--good); opacity: 1; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 10px; }
+label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+select { font: 14px var(--sans); padding: 4px 6px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; }
+select:disabled { opacity: 0.5; }
+.summary { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 4px 0 10px; }
+.summary b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.zoom { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+button { font: 12px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+button[aria-pressed="true"] { border-color: var(--fg); font-weight: 600; }
+button:focus-visible, select:focus-visible, tr[tabindex]:focus-visible, .gate:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
+svg { display: block; }
+svg text { font-family: var(--mono); fill: var(--fg); }
 .g-body { fill: var(--bg); stroke: var(--fg); stroke-width: 1.3; }
 .gate { cursor: pointer; }
 .gate:hover .g-body { fill: var(--soft); }
@@ -72,119 +84,221 @@ tr.cur td { background: var(--soft); font-weight: 600; }
 .tx .p { font-size: 11px; font-weight: 600; }
 .tx circle.b { fill: var(--bg); stroke: var(--fg); stroke-width: 1.2; }
 .tx circle.n { fill: var(--fg); }
-ul { margin: 6px 0 0; padding-left: 20px; max-width: 80ch; }
-li { margin: 2px 0; }
+.blk rect { fill: var(--soft); stroke: var(--fg); stroke-width: 1.2; }
+.blk text { font-size: 12px; }
+.blk .arw { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.blk .t { fill: var(--muted); font-size: 11px; }
 </style>
 
 <main>
   <header>
-    <h1>ECE555 neuron netlist</h1>
-    <p class="muted">out = ReLU(x1·w1 + x2·w2 + wb). Drawn from the netlists built by <code>model/neuron.cpp</code>; gate labels and net names are the ones in the code.</p>
+    <h1>ECE555 neuron design</h1>
+    <p class="muted">out = ReLU(x1·w1 + x2·w2 + wb), 2-bit codes 00 = 0, 01 = +1, 11 = −1. State of the design on October 16, 2026, from three Spectre experiments (ASAP7 RVT, TT, 25 °C, 0.9 V, 1 fF per output) and the calibrated C++ model. <span class="tag m">Spectre</span> marks measured numbers; <span class="tag">model</span> marks model estimates.</p>
   </header>
 
+  <section class="rec">
+    <h2>Recommended design</h2>
+    <p>Carry-save neuron with 10T NOR+AOI XNOR multipliers, mirror full adders, a NOR3/AOI211 output stage that also does the ReLU, and <b>2 fins on every transistor</b>.</p>
+    <dl>
+      <dt>Worst-case delay</dt><dd><b class="mono">50.9 ps</b> <span class="tag m">Spectre</span> over all 816 output-changing transitions; 50.3 ps when weights also change</dd>
+      <dt>Size</dt><dd><span class="mono">106</span> transistors, <span class="mono">212</span> fins</dd>
+      <dt>Area estimate</dt><dd><span class="mono">2.39 µm²</span> floorplan bounding box from the area study (planning estimate, not a routed layout)</dd>
+      <dt>Delay × area</dt><dd>Best of every measured candidate, and best in all 18 layout scenarios the area study tried</dd>
+      <dt>Still needed</dt><dd>TA approval of the carry-save datapath, the output load the TA expects, layout, DRC/LVS and extracted timing</dd>
+    </dl>
+  </section>
+
   <section>
-    <div class="controls">
-      <label for="s-arch">Architecture<select id="s-arch"><option value="0">Spec datapath (MUL, ADD2, ADD3, ReLU)</option><option value="1">Carry-save count</option></select></label>
-      <label for="s-xor">XOR / XNOR<select id="s-xor"><option value="0">NAND4 (16T)</option><option value="1">CMOS12</option><option value="2">NOR+AOI (10T)</option></select></label>
-      <label for="s-fa">Full adder<select id="s-fa"><option value="0">XOR-based FA</option><option value="1">Mirror FA</option></select></label>
-      <label for="s-relu">ReLU<select id="s-relu"><option value="0">3-bit MUX</option><option value="1">AND gating</option></select></label>
-      <label for="s-size">Sizing<select id="s-size"><option value="unit">Unit (all gates size 1)</option><option value="balanced">Balanced (min delay × area)</option><option value="fastest">Fastest</option></select></label>
+    <h2>Measured candidates, ranked by the grading metric</h2>
+    <p>The grade uses (f<sub>max</sub> / area)<sup>m</sup>, so the ranking is by worst-case delay × area. Delays are Spectre over all 816 output-changing transitions; areas are the area study's floorplan estimates (270 nm cells, 4-track routing channels).</p>
+    <div class="box"><table id="cands"></table></div>
+    <p class="small muted" style="margin-top:6px">The spec-datapath area comes from the model's port of the same floorplan template (it reproduces the study's areas within 3%).</p>
+  </section>
+
+  <section>
+    <h2>Why carry-save, and how it differs from the spec diagram</h2>
+    <div class="boxed" style="border:0">
+      <svg class="blk" id="blk" viewBox="0 0 900 230" width="900" height="230" role="img" aria-label="Spec datapath: multipliers, two ripple adders in series, then a ReLU mux. Carry-save: multipliers, two full adders in parallel, then two output gates."></svg>
     </div>
-    <div class="summary" id="summary"></div>
-    <p class="tb" id="tb"></p>
+    <ul>
+      <li>Every product and the bias is −1, 0 or +1: a nonzero bit and a negative bit, so each value is nonzero − 2·negative.</li>
+      <li>The sum is (number of nonzero terms) − 2·(number of negative terms). One full adder counts each, and the two run in parallel with no carry between them.</li>
+      <li>Two gates turn the counts into the ReLU output directly: <code>out[1] = nz.carry · !neg.sum · !neg.carry</code> (NOR3) and <code>out[0] = nz.sum · !neg.carry · (nz.carry + !neg.sum)</code> (AOI211). <code>out[2]</code> is always 0.</li>
+      <li>This only works because values are limited to −1, 0 and +1. Slide 14 calls its block list an example, but MS1 asks for adder and mux schematics, so get the TA's approval first.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What the sweeps showed</h2>
+    <div class="two">
+      <div>
+        <h3>Sizing the recommended topology <span class="tag m">Spectre</span></h3>
+        <div class="box"><table id="sizing"></table></div>
+        <p class="small muted" style="margin-top:6px">103-transition screening set. Uniform 2 fins is clearly best; upsizing one block barely helps, and stack compensation costs fins without the payoff.</p>
+      </div>
+      <div>
+        <h3>Fastest 1-fin topologies <span class="tag m">Spectre</span></h3>
+        <div class="box"><table id="topo"></table></div>
+        <p class="small muted" style="margin-top:6px">Same screening set. NAND-based XORs average about 5 ps slower. The simple output stage is about 1.4 ps faster but needs 16 more transistors, and the multiplier variant hardly matters.</p>
+      </div>
+    </div>
+    <h3>Area</h3>
+    <ul>
+      <li>The installed ASAP7 library fits 1, 2 or 3 fins in the same 270 nm cell: INVxp33, INVxp67 and INVx1 are all 0.162 × 0.270 µm. Going from 1 to 2 fins costs no cell area there.</li>
+      <li>With routing channels and margins included, uniform 2 fins had the lowest delay × area in all 18 layout scenarios (cell heights 162–270 nm, 2–6 routing tracks, with and without shared diffusion).</li>
+      <li>The model predicts uniform 3 fins at about 50.5 ps for the same area. That's inside the model's error, so it needs a Spectre run before it changes the recommendation.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Testbench</h2>
+    <div class="two">
+      <div>
+        <h3>Worst-case vectors <span class="tag m">Spectre</span></h3>
+        <div class="box"><table id="vectors"></table></div>
+        <p class="small muted" style="margin-top:6px">Use these, not the model's guess: the model ranks transitions well but rarely picks the single slowest one. Switch all changing inputs at the same time; input skew counts against T.</p>
+      </div>
+      <div>
+        <h3>Sensitivity of the recommended design <span class="tag m">Spectre</span></h3>
+        <div class="box"><table id="env"></table></div>
+        <p class="small muted" style="margin-top:6px">One factor at a time from the 1 fF, TT, 25 °C, 0.9 V base, on the screening set (the 1 fF row is the full run). *At 10 fF the outputs miss the rail with 300 ps per state, but settle with 1,000 ps. Output load dominates, so agree the load with the TA before reporting T.</p>
+      </div>
+    </div>
   </section>
 
   <section>
     <h2>Gate-level schematic</h2>
+    <p class="muted">Every design the model knows, with its timing from the calibrated model. Pick a design, then click a gate to see its transistors and fins.</p>
+    <div class="controls">
+      <label for="s-arch">Architecture<select id="s-arch"><option value="1">Carry-save count</option><option value="0">Spec datapath</option></select></label>
+      <label for="s-xor">XOR / XNOR<select id="s-xor"><option value="2">NOR+AOI (10T)</option><option value="1">CMOS (12T)</option><option value="0">NAND (16T)</option></select></label>
+      <label for="s-fa">Full adder<select id="s-fa"><option value="1">Mirror</option><option value="0">XOR-based</option></select></label>
+      <label for="s-relu">ReLU<select id="s-relu"></select></label>
+      <label for="s-size">Sizing<select id="s-size"><option value="fin1">1 fin</option><option value="fin2">2 fins</option><option value="fin3">3 fins</option><option value="stack">Stack-compensated</option></select></label>
+    </div>
+    <div class="summary" id="summary"></div>
     <div class="zoom">Zoom <button type="button" data-z="fit">Fit</button><button type="button" data-z="1">100%</button><button type="button" data-z="1.5">150%</button></div>
-    <div class="box" id="netbox"><svg id="net" role="img" aria-label="Gate-level schematic of the neuron"></svg></div>
-    <p class="key"><span>Orange</span> is the worst-case path, with arrival times in τ. Click a gate to see its transistors. Boxes are complex gates; the small letters are their pin names.</p>
+    <div class="boxed" id="netbox"><svg id="net" role="img" aria-label="Gate-level schematic of the selected design with the model's worst-case path"></svg></div>
+    <p class="small muted" style="margin-top:6px"><span style="color:var(--crit);font-weight:600">Orange</span> is the model's worst-case path with arrival times in ps. Boxes are complex gates; small letters are their pin names.</p>
+    <div class="two" style="margin-top:14px">
+      <div><h3>Worst-case path <span class="tag">model</span></h3><div class="box"><table id="path"></table></div></div>
+      <div><h3>Selected gate</h3><div id="detail"></div></div>
+    </div>
   </section>
 
-  <div class="two">
-    <section>
-      <h2>Worst-case path</h2>
-      <div class="box" style="border:0"><table id="path"></table></div>
-    </section>
-    <section>
-      <h2>Selected gate</h2>
-      <div id="detail"></div>
-    </section>
-  </div>
-
   <section>
-    <h2>All designs</h2>
-    <p class="muted" style="margin-bottom:6px">Sorted by delay × area after balanced sizing. Area is the sum of device widths in W<sub>unit</sub>. Click a row to load it.</p>
-    <div class="box" style="border:0"><table id="rank"></table></div>
+    <h2>All designs <span class="tag">model</span></h2>
+    <p class="muted">Model delays in ps and floorplan-area estimates. Area is the same for 1–3 fins because the cells stay 270 nm tall. Sorted by the best delay × area across sizings; click a row to load it above.</p>
+    <div class="box"><table id="rank"></table></div>
   </section>
 
-  <div class="two">
-    <section>
-      <h2>Carry-save count architecture</h2>
-      <p>Every product and the bias is −1, 0 or +1, stored as a nonzero bit y0 and a negative bit y1, so its value is y0 − 2·y1. That makes the sum</p>
-      <ul>
-        <li><code>sum = (#nonzero) − 2·(#negative)</code></li>
-        <li>Two full adders in parallel count them: <code>#nonzero = nz.sum + 2·nz.carry</code>, <code>#negative = neg.sum + 2·neg.carry</code></li>
-        <li><code>out[1] = nz.carry · !neg.sum · !neg.carry</code> (one NOR3)</li>
-        <li><code>out[0] = nz.sum · !neg.carry · (nz.carry + !neg.sum)</code> (one AOI211)</li>
-      </ul>
-      <p style="margin-top:6px">This replaces both ripple adders and the ReLU mux with one full-adder delay plus one gate. It still contains a multiplier, adders and the activation, but check with your TA that a restructured datapath is allowed (slide 14 calls its block list an example).</p>
-    </section>
-    <section>
-      <h2>Beta sweep (unit sizing)</h2>
-      <div class="box" style="border:0"><table id="beta"></table></div>
-    </section>
-  </div>
+  <section>
+    <h2>How far to trust the model</h2>
+    <p>Fitted to 7,764 Spectre transitions in 20 circuits, with the PMOS/NMOS ratio fixed at the measured drain-current ratio of 1.20 (49.35 µA / 41.19 µA). Every circuit's worst-case delay is within 8.5% of Spectre; the model reads about 5% low on average, and it orders <span id="rankagree"></span> circuit pairs the same way Spectre does. Before refitting, it predicted the 14 carry-save sweep circuits it had never seen to within 15%.</p>
+    <p>Use it to narrow choices and explain trends. Differences under about 10% need Spectre, and it over-credits upsizing only some gates.</p>
+    <div class="box"><table id="fit"></table></div>
+  </section>
 
   <section>
-    <h2>Model</h2>
-    <p class="muted" id="params"></p>
+    <h2>Next steps</h2>
+    <ol>
+      <li>Ask the TA to approve the carry-save datapath and to name the output load and input edges for the T measurement.</li>
+      <li>Run uniform 3 fins on the recommended design in Spectre. The model expects about 50.5 ps for no extra area.</li>
+      <li>Build the cell library (INV, NAND2, NOR2, OAI21, NOR3, AOI211, mirror carry and sum) at 2 fins, 270 nm tall, and abut cells in rows.</li>
+      <li>Fix Jackson's XOR2 netlist before reusing it: <code>net26</code> should be <code>y</code>, and <code>net8</code> should be <code>vdd!</code>.</li>
+      <li>Lay out, run DRC/LVS, extract, and rerun the worst-case vectors on the extracted netlist for MS2 and MS4.</li>
+    </ol>
+  </section>
+
+  <section>
+    <p class="small muted">Data: <code>neuron-model-2026-10-16</code> (six-circuit validation), <code>carry-save-sweep-2026-10-16</code> (96 Spectre runs), <code>area-study-2026-10-16</code> (floorplan estimates calibrated to ASAP7 LEF), and <code>model/neuron.cpp</code> on the <code>finfet-asap7</code> branch.</p>
   </section>
 </main>
 
 <script type="application/json" id="data">__DATA__</script>
+<script type="application/json" id="facts">__FACTS__</script>
 <script>
 (function () {
   const D = JSON.parse(document.getElementById('data').textContent);
+  const F = JSON.parse(document.getElementById('facts').textContent);
   const NS = 'http://www.w3.org/2000/svg';
-  const st = { ai: 1, xi: 2, fi: 0, ri: 2, sz: 'balanced', sel: null, zoom: 'fit' };
-  try { const z = localStorage.getItem('neuron-zoom'); if (z) st.zoom = z; } catch (e) {}
-  const find = (ai, xi, fi, ri, sz) => D.designs.find(d => d.ai === ai && d.xi === xi && d.fi === fi && d.ri === ri && d.sizing === sz);
-  const cur = () => find(st.ai, st.xi, st.fi, st.ri, st.sz);
-  const nl = (c, n) => c.nets[n].alias || c.nets[n].name;
-  const blockOf = g => g.label.split('/')[0];
+  const $ = id => document.getElementById(id);
   const f1 = x => (Math.round(x * 10) / 10).toFixed(1);
   const fw = w => String(Math.round(w * 100) / 100);
   const sg = v => (v > 0 ? '+' + v : v < 0 ? '−' + -v : '0');
   const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   function el(tag, a, parent, text) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (text !== undefined) e.textContent = text; if (parent) parent.appendChild(e); return e; }
-  const val = v => Math.max(0, v.x1 * v.w1 + v.x2 * v.w2 + v.wb);
+  const relu = v => Math.max(0, v.x1 * v.w1 + v.x2 * v.w2 + v.wb);
 
-  /* controls */
-  const sel = id => document.getElementById(id);
+  /* ---------- fixed tables ---------- */
+  (function cands() {
+    const best = Math.min(...F.cands.map(c => c.T * c.A));
+    const rows = F.cands.map(c => ({ ...c, ta: c.T * c.A, rel: best / (c.T * c.A) })).sort((a, b) => a.ta - b.ta);
+    $('cands').innerHTML = `<thead><tr><th>Design</th><th class="n">Fins</th><th class="n">T (ps)</th><th class="n">Area (µm²)</th><th class="n">T × A</th><th class="n">f/A vs best</th><th></th></tr></thead><tbody>${rows.map(c =>
+      `<tr${c.rec ? ' class="hl"' : ''}><td>${esc(c.label)}</td><td class="n">${c.fins}</td><td class="n">${c.T.toFixed(1)}</td><td class="n">${c.A.toFixed(2)}${c.src === 'model' ? '*' : ''}</td><td class="n">${c.ta.toFixed(0)}</td><td class="n">${c.rel.toFixed(2)}</td><td><span class="bar" style="width:${Math.round(c.rel * 120)}px"></span></td></tr>`).join('')}</tbody>`;
+  })();
+  $('sizing').innerHTML = `<thead><tr><th>Sizing</th><th class="n">Fins</th><th class="n">T (ps)</th></tr></thead><tbody>${F.sizing.map(s =>
+    `<tr${s.label === '2 fins everywhere' ? ' class="hl"' : ''}><td>${esc(s.label)}</td><td class="n">${s.fins}</td><td class="n">${s.T.toFixed(1)}</td></tr>`).join('')}</tbody>`;
+  $('topo').innerHTML = `<thead><tr><th>Multiplier XNOR</th><th>Multiplier</th><th>Adders</th><th>Output</th><th class="n">Trans.</th><th class="n">T (ps)</th></tr></thead><tbody>${F.topo.map(t =>
+    `<tr><td>${esc(t.mx)}</td><td>${esc(t.mf)}</td><td>${esc(t.fa)}</td><td>${esc(t.out)}</td><td class="n">${t.trans}</td><td class="n">${t.T.toFixed(1)}</td></tr>`).join('')}</tbody>`;
+  const vec = [
+    { d: 'Recommended, 2 fins', a: { x1: -1, x2: 0, w1: -1, w2: 0, wb: 1 }, b: { x1: 0, x2: -1, w1: -1, w2: 0, wb: 1 }, T: 50.9 },
+    { d: 'Same design, 1 fin', a: { x1: 1, x2: 1, w1: 1, w2: -1, wb: 0 }, b: { x1: 0, x2: -1, w1: 1, w2: -1, wb: 0 }, T: 61.5 }];
+  $('vectors').innerHTML = `<thead><tr><th>Design</th><th>Hold</th><th>Step</th><th class="n">Out</th><th class="n">T (ps)</th></tr></thead><tbody>${vec.map(v => {
+    const ks = ['x1', 'x2', 'w1', 'w2', 'wb'];
+    return `<tr><td>${v.d}</td><td class="c">${ks.filter(k => v.a[k] === v.b[k]).map(k => `${k}=${sg(v.a[k])}`).join(' ')}</td><td class="c">${ks.filter(k => v.a[k] !== v.b[k]).map(k => `${k} ${sg(v.a[k])}→${sg(v.b[k])}`).join(', ')}</td><td class="n">${relu(v.a)}→${relu(v.b)}</td><td class="n">${v.T.toFixed(1)}</td></tr>`;
+  }).join('')}</tbody>`;
+  $('env').innerHTML = `<thead><tr><th>Factor</th><th>Value</th><th class="n">T (ps)</th></tr></thead><tbody>${F.env.map(e =>
+    `<tr${e.value.includes('base') ? ' class="hl"' : ''}><td>${esc(e.factor)}</td><td>${esc(e.value)}${e.note ? '*' : ''}</td><td class="n">${e.T.toFixed(1)}</td></tr>`).join('')}</tbody>`;
+  $('rankagree').textContent = `${F.fit_rank[0]} of ${F.fit_rank[1]}`;
+  $('fit').innerHTML = `<thead><tr><th>Circuit</th><th>Design</th><th>Sizing</th><th class="n">Fins</th><th class="n">Transitions</th><th class="n">Spectre (ps)</th><th class="n">Model (ps)</th><th class="n">Error</th></tr></thead><tbody>${F.fit.map(r =>
+    `<tr><td class="c">${esc(r.case)}</td><td class="c">${esc(r.design)}</td><td class="c">${esc(r.sizing)}</td><td class="n">${r.fins}</td><td class="n">${r.n}</td><td class="n">${r.spectre.toFixed(1)}</td><td class="n">${r.model.toFixed(1)}</td><td class="n">${(r.err > 0 ? '+' : '') + r.err.toFixed(1)}%</td></tr>`).join('')}</tbody>`;
+
+  /* ---------- block diagram ---------- */
+  (function blocks() {
+    const s = $('blk');
+    el('defs', {}, s).innerHTML = '<marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8z" fill="context-stroke"/></marker>';
+    const box = (x, y, w, h, t) => { el('rect', { x, y, width: w, height: h, rx: 3 }, s); el('text', { x: x + w / 2, y: y + h / 2 + 4, 'text-anchor': 'middle' }, s, t); };
+    const arrow = (pts) => el('polyline', { class: 'arw', points: pts.map(p => p.join(',')).join(' '), 'marker-end': 'url(#ah)' }, s);
+    el('text', { x: 0, y: 16, 'font-weight': 600 }, s, 'Spec datapath (slide 9)');
+    box(10, 30, 70, 26, '× MUL1'); box(10, 66, 70, 26, '× MUL2');
+    box(140, 40, 110, 42, '2-bit adder'); box(300, 40, 110, 42, '3-bit adder'); box(460, 40, 90, 42, 'ReLU mux');
+    arrow([[80, 43], [138, 52]]); arrow([[80, 79], [138, 70]]); arrow([[250, 61], [298, 61]]); arrow([[410, 61], [458, 61]]); arrow([[550, 61], [600, 61]]);
+    el('text', { class: 't', x: 300, y: 100 }, s, 'wb'); arrow([[318, 104], [340, 84]]);
+    el('text', { class: 't', x: 615, y: 58 }, s, 'carries ripple through both adders,');
+    el('text', { class: 't', x: 615, y: 74 }, s, 'then the mux waits for the sign bit');
+    el('text', { x: 0, y: 128, 'font-weight': 600 }, s, 'Carry-save count');
+    box(10, 140, 70, 26, '× MUL1'); box(10, 176, 70, 22, '× MUL2');
+    box(140, 136, 150, 26, 'FA: count nonzero'); box(140, 170, 150, 26, 'FA: count negative');
+    box(340, 150, 120, 32, 'NOR3 + AOI211');
+    arrow([[80, 153], [138, 150]]); arrow([[80, 187], [138, 183]]); arrow([[290, 149], [338, 160]]); arrow([[290, 183], [338, 172]]); arrow([[460, 166], [510, 166]]);
+    el('text', { class: 't', x: 208, y: 224 }, s, 'wb'); arrow([[215, 212], [215, 198]]);
+    el('text', { class: 't', x: 530, y: 162 }, s, 'two full adders in parallel, then one gate;');
+    el('text', { class: 't', x: 530, y: 178 }, s, 'ReLU is built into the output gates');
+  })();
+
+  /* ---------- explorer ---------- */
+  const st = { ai: 1, xi: 2, fi: 1, ri: 2, sz: 'fin2', sel: null, zoom: 'fit' };
+  try { const z = localStorage.getItem('neuron-zoom'); if (z) st.zoom = z; } catch (e) {}
+  const find = (ai, xi, fi, ri, sz) => D.designs.find(d => d.ai === ai && d.xi === xi && d.fi === fi && d.ri === ri && d.sizing === sz);
+  const cur = () => find(st.ai, st.xi, st.fi, st.ri, st.sz);
+  const nl = (c, n) => c.nets[n].alias || c.nets[n].name;
+  const blockOf = g => g.label.split('/')[0];
   function syncControls() {
-    sel('s-arch').value = st.ai; sel('s-xor').value = st.xi; sel('s-fa').value = st.fi; sel('s-size').value = st.sz;
-    const r = sel('s-relu');
+    $('s-arch').value = st.ai; $('s-xor').value = st.xi; $('s-fa').value = st.fi; $('s-size').value = st.sz;
+    const r = $('s-relu');
     if (st.ai === 1) { r.disabled = true; r.innerHTML = '<option value="2">Built into output gates</option>'; }
-    else { r.disabled = false; r.innerHTML = '<option value="0">3-bit MUX</option><option value="1">AND gating</option>'; r.value = st.ri; }
+    else { r.disabled = false; r.innerHTML = '<option value="1">AND gating</option><option value="0">3-bit mux</option>'; r.value = st.ri; }
   }
-  sel('s-arch').addEventListener('change', e => { st.ai = +e.target.value; st.ri = st.ai === 1 ? 2 : 1; st.sel = null; render(); });
-  sel('s-xor').addEventListener('change', e => { st.xi = +e.target.value; st.sel = null; render(); });
-  sel('s-fa').addEventListener('change', e => { st.fi = +e.target.value; st.sel = null; render(); });
-  sel('s-relu').addEventListener('change', e => { st.ri = +e.target.value; st.sel = null; render(); });
-  sel('s-size').addEventListener('change', e => { st.sz = e.target.value; render(); });
-
+  $('s-arch').addEventListener('change', e => { st.ai = +e.target.value; st.ri = st.ai === 1 ? 2 : 1; st.sel = null; render(); });
+  $('s-xor').addEventListener('change', e => { st.xi = +e.target.value; st.sel = null; render(); });
+  $('s-fa').addEventListener('change', e => { st.fi = +e.target.value; st.sel = null; render(); });
+  $('s-relu').addEventListener('change', e => { st.ri = +e.target.value; st.sel = null; render(); });
+  $('s-size').addEventListener('change', e => { st.sz = e.target.value; render(); });
   function renderSummary() {
     const c = cur();
-    sel('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Area <b>${Math.round(c.area)}</b> W<sub>unit</sub></span>
-      <span>Worst delay <b>${f1(c.worst)} τ</b> (${f1(c.worst / c.fo4)} FO4)</span><span>Worst rise / fall <b>${f1(c.rise)} / ${f1(c.fall)} τ</b></span><span>Gates <b>${c.gates.length}</b></span>`;
-    const a = c.wfixFrom, b = c.wfixTo, ks = ['x1', 'x2', 'w1', 'w2', 'wb'];
-    const hold = ks.filter(k => a[k] === b[k]).map(k => `${k} = ${sg(a[k])}`).join(', ');
-    const step = ks.filter(k => a[k] !== b[k]).map(k => `${k} ${sg(a[k])} → ${sg(b[k])}`).join(', ');
-    sel('tb').innerHTML = `Worst-case testbench vector (weights fixed): hold <b class="mono">${esc(hold)}</b>, step <b class="mono">${esc(step)}</b>, output ${val(a)} → ${val(b)} (${f1(c.wfix)} τ).`;
+    $('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Fins <b>${Math.round(c.fins)}</b></span><span>Area estimate <b>${c.area.toFixed(2)}</b> µm²</span><span>Model worst delay <b>${f1(c.worst)} ps</b></span><span>Gates <b>${c.gates.length}</b></span>`;
   }
-
-  /* schematic */
   const GW = 64, COLW = 130, PIN = 16;
   let L = null, wires = [];
   function layout(c) {
@@ -228,7 +342,7 @@ li { margin: 2px 0; }
   }
   function renderNet() {
     const c = cur(); L = layout(c);
-    const { pos, inY, outX } = L, svg = sel('net');
+    const { pos, inY, outX } = L, svg = $('net');
     svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${L.W} ${L.H}`);
     const critG = new Set(), critE = new Set(), arr = {};
     for (let k = 1; k < c.path.length; k++) { const d = c.nets[c.path[k][0]].drv; critG.add(d); critE.add(c.path[k - 1][0] + '>' + d); arr[c.path[k][0]] = c.path[k][1]; }
@@ -263,10 +377,10 @@ li { margin: 2px 0; }
     c.gates.forEach((g, gi) => {
       const p = pos[gi];
       const ge = el('g', { class: 'gate' + (critG.has(gi) ? ' crit' : '') + (st.sel === gi ? ' sel' : ''), transform: `translate(${p.x},${p.y})`, tabindex: 0, role: 'button', 'aria-label': g.label }, svg);
-      el('title', {}, ge, `${g.label} → ${nl(c, g.out)}${g.size !== 1 ? ' (size ' + fw(g.size) + ')' : ''}`);
+      el('title', {}, ge, `${g.label} → ${nl(c, g.out)}`);
       el('rect', { x: -8, y: -4, width: GW + 12, height: p.h + 20, fill: 'transparent', 'pointer-events': 'all' }, ge);
       shape(ge, g, p);
-      el('text', { class: 'lbl', x: 24, y: p.h + 12, 'text-anchor': 'middle' }, ge, g.label.split('/')[1] + (g.size !== 1 ? ' ×' + fw(g.size) : ''));
+      el('text', { class: 'lbl', x: 24, y: p.h + 12, 'text-anchor': 'middle' }, ge, g.label.split('/')[1]);
       const al = c.nets[g.out].alias;
       if (al && !c.outputs.includes(g.out)) el('text', { class: 'netlbl', x: GW + 4, y: p.h / 2 - 5 }, ge, al);
       if (arr[g.out] !== undefined) el('text', { class: 'timing', x: GW + 4, y: p.h / 2 + 12 }, ge, 't=' + f1(arr[g.out]));
@@ -279,7 +393,7 @@ li { margin: 2px 0; }
   }
   function light(gi) { wires.forEach(w => w.el.classList.toggle('hot', (gi !== null && (w.src === gi || w.sink === gi)) || (st.sel !== null && (w.src === st.sel || w.sink === st.sel)))); }
   function zoom() {
-    const svg = sel('net'), box = sel('netbox');
+    const svg = $('net'), box = $('netbox');
     let z = st.zoom === 'fit' ? Math.min(1, (box.clientWidth - 2) / L.W) : parseFloat(st.zoom);
     if (!(z > 0)) z = 1;
     svg.setAttribute('width', Math.round(L.W * z)); svg.setAttribute('height', Math.round(L.H * z));
@@ -288,7 +402,6 @@ li { margin: 2px 0; }
   document.querySelectorAll('.zoom button').forEach(b => b.addEventListener('click', () => { st.zoom = b.dataset.z; try { localStorage.setItem('neuron-zoom', st.zoom); } catch (e) {} zoom(); }));
   window.addEventListener('resize', () => { if (L && st.zoom === 'fit') zoom(); });
 
-  /* transistor view */
   function spL(n) {
     if (n.k === 'L') return { n, w: 92, h: 52, tx: 64 };
     const k = n.ch.map(spL);
@@ -305,7 +418,7 @@ li { margin: 2px 0; }
       if (pmos) { el('circle', { class: 'b', cx: cx - 12.5, cy: y + 26, r: 3.3 }, svg); el('line', { class: 'dev', x1: cx - 16, y1: y + 26, x2: cx - 30, y2: y + 26 }, svg); }
       else el('line', { class: 'dev', x1: cx - 9, y1: y + 26, x2: cx - 30, y2: y + 26 }, svg);
       el('text', { class: 'p', x: cx - 34, y: y + 24, 'text-anchor': 'end' }, svg, pins[o.n.pin]);
-      el('text', { class: 'w', x: cx - 34, y: y + 37, 'text-anchor': 'end' }, svg, 'W ' + fw(o.n.w));
+      el('text', { class: 'w', x: cx - 34, y: y + 37, 'text-anchor': 'end' }, svg, 'nfin ' + fw(o.n.w));
       return;
     }
     if (o.n.k === 'S') { let yy = y; o.k.forEach(q => { spD(svg, q, x + o.tx - q.tx, yy, pmos, pins); yy += q.h; }); return; }
@@ -316,17 +429,15 @@ li { margin: 2px 0; }
     el('line', { class: 'rail', x1: x + o.tx, y1: y, x2: x + o.tx, y2: top }, svg);
     el('line', { class: 'rail', x1: x + o.tx, y1: bot, x2: x + o.tx, y2: y + o.h }, svg);
   }
-  const pinW = (n, a) => { if (n.k === 'L') a[n.pin] = (a[n.pin] || 0) + n.w; else n.ch.forEach(q => pinW(q, a)); return a; };
   function pick(gi) { st.sel = st.sel === gi ? null : gi; renderNet(); renderDetail(); renderPath(); }
   function renderDetail() {
-    const c = cur(), box = sel('detail');
+    const c = cur(), box = $('detail');
     if (st.sel === null) { box.innerHTML = '<p class="muted">Click a gate in the schematic or a row in the path table.</p>'; return; }
-    const g = c.gates[st.sel], wn = pinW(g.pdn, {}), wp = pinW(g.pun, {});
-    box.innerHTML = `<p><b class="mono">${esc(g.label)}</b> &nbsp;${g.type}, ${g.ndev} transistors, size ${fw(g.size)}, drives <code>${esc(nl(c, g.out))}</code> (load ${f1(c.nets[g.out].C)} C<sub>unit</sub>)</p>
-      <table style="margin:8px 0"><thead><tr><th>Pin</th><th>Net</th><th class="n">NMOS W</th><th class="n">PMOS W</th></tr></thead><tbody>
-      ${g.pins.map((pn, i) => `<tr><td class="c">${pn}</td><td class="c">${esc(nl(c, g.in[i]))}</td><td class="n">${fw(wn[i] || 0)}</td><td class="n">${fw(wp[i] || 0)}</td></tr>`).join('')}</tbody></table>
-      <div class="box tx"><svg id="txsvg" role="img" aria-label="Transistors of ${esc(g.label)}"></svg></div>`;
-    const svg = sel('txsvg'), Lp = spL(g.pun), Ln = spL(g.pdn);
+    const g = c.gates[st.sel];
+    box.innerHTML = `<p><b class="mono">${esc(g.label)}</b> &nbsp;${g.type}, ${g.ndev} transistors, drives <code>${esc(nl(c, g.out))}</code></p>
+      <p class="small muted">Inputs: ${g.pins.map((pn, i) => `<span class="mono">${pn}</span> = <span class="mono">${esc(nl(c, g.in[i]))}</span>`).join(', ')}</p>
+      <div class="boxed tx"><svg id="txsvg" role="img" aria-label="Transistors of ${esc(g.label)}"></svg></div>`;
+    const svg = $('txsvg'), Lp = spL(g.pun), Ln = spL(g.pdn);
     const cx = Math.max(Lp.tx, Ln.tx) + 20, right = Math.max(Lp.w - Lp.tx, Ln.w - Ln.tx);
     let y = 26;
     el('text', { x: cx, y: 14, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600 }, svg, 'VDD');
@@ -344,42 +455,32 @@ li { margin: 2px 0; }
     const W = cx + right + 30 + 7 * nl(c, g.out).length, H = y + 26;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
   }
-
   function renderPath() {
     const c = cur();
     const rows = c.path.map(([n, t], k) => {
       const d = c.nets[n].drv;
       return `<tr${d >= 0 ? ` class="pick${d === st.sel ? ' cur' : ''}" tabindex="0" data-g="${d}"` : ''}><td class="n">${k}</td><td class="c">${esc(d >= 0 ? c.gates[d].label : c.nets[n].name)}</td><td class="c">${esc(d >= 0 ? c.nets[n].alias : '')}</td><td class="n">${k ? '+' + f1(t - c.path[k - 1][1]) : ''}</td><td class="n">${f1(t)}</td></tr>`;
     }).join('');
-    const t = sel('path');
-    t.innerHTML = `<thead><tr><th class="n">#</th><th>Gate</th><th>Net</th><th class="n">Stage τ</th><th class="n">Arrival τ</th></tr></thead><tbody>${rows}</tbody>`;
+    const t = $('path');
+    t.innerHTML = `<thead><tr><th class="n">#</th><th>Gate</th><th>Net</th><th class="n">Stage ps</th><th class="n">Arrival ps</th></tr></thead><tbody>${rows}</tbody>`;
     t.querySelectorAll('tr[data-g]').forEach(r => { r.addEventListener('click', () => pick(+r.dataset.g)); r.addEventListener('keydown', e => { if (e.key === 'Enter') pick(+r.dataset.g); }); });
   }
   function renderRank() {
-    const keys = D.designs.filter(d => d.sizing === 'unit');
-    const row = u => {
-      const b = find(u.ai, u.xi, u.fi, u.ri, 'balanced'), f = find(u.ai, u.xi, u.fi, u.ri, 'fastest');
-      return { u, b, f };
-    };
-    const rows = keys.map(row).sort((p, q) => p.b.worst * p.b.area - q.b.worst * q.b.area);
+    const keys = D.designs.filter(d => d.sizing === 'fin1');
+    const rows = keys.map(u => {
+      const v = ['fin1', 'fin2', 'fin3', 'stack'].map(s => find(u.ai, u.xi, u.fi, u.ri, s));
+      return { u, v, ta: Math.min(...v.map(x => x.worst * x.area)) };
+    }).sort((p, q) => p.ta - q.ta);
+    const best = rows[0].ta;
     const isCur = r => r.u.ai === st.ai && r.u.xi === st.xi && r.u.fi === st.fi && r.u.ri === st.ri;
-    sel('rank').innerHTML = `<thead><tr><th>Architecture</th><th>XOR</th><th>Full adder</th><th>ReLU</th><th class="n">Transistors</th><th class="n">Area</th><th class="n">T unit</th><th class="n">T balanced</th><th class="n">T fastest</th><th class="n">Area fastest</th></tr></thead><tbody>
-      ${rows.map(r => `<tr class="pick${isCur(r) ? ' cur' : ''}" tabindex="0" data-k="${r.u.ai},${r.u.xi},${r.u.fi},${r.u.ri}"><td>${r.u.arch}</td><td>${r.u.xor}</td><td>${r.u.fa}</td><td>${r.u.relu}</td>
-      <td class="n">${r.u.trans}</td><td class="n">${Math.round(r.u.area)}</td><td class="n">${f1(r.u.worst)}</td><td class="n">${f1(r.b.worst)}</td><td class="n">${f1(r.f.worst)}</td><td class="n">${Math.round(r.f.area)}</td></tr>`).join('')}</tbody>`;
-    sel('rank').querySelectorAll('tr[data-k]').forEach(r => {
-      const go = () => { [st.ai, st.xi, st.fi, st.ri] = r.dataset.k.split(',').map(Number); st.sel = null; render(); window.scrollTo({ top: 0 }); };
+    $('rank').innerHTML = `<thead><tr><th>Architecture</th><th>XOR</th><th>Full adder</th><th>ReLU</th><th class="n">Trans.</th><th class="n">T 1 fin</th><th class="n">T 2 fins</th><th class="n">T 3 fins</th><th class="n">T stack</th><th class="n">Area 1–3 fins</th><th class="n">Area stack</th><th class="n">f/A vs best</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="pick${isCur(r) ? ' cur' : ''}" tabindex="0" data-k="${r.u.ai},${r.u.xi},${r.u.fi},${r.u.ri}"><td>${r.u.arch}</td><td>${r.u.xor}</td><td>${r.u.fa}</td><td>${r.u.relu}</td><td class="n">${r.u.trans}</td>${r.v.map(x => `<td class="n">${f1(x.worst)}</td>`).join('')}<td class="n">${r.v[0].area.toFixed(2)}</td><td class="n">${r.v[3].area.toFixed(2)}</td><td class="n">${(best / r.ta).toFixed(2)}</td></tr>`).join('')}</tbody>`;
+    $('rank').querySelectorAll('tr[data-k]').forEach(r => {
+      const go = () => { [st.ai, st.xi, st.fi, st.ri] = r.dataset.k.split(',').map(Number); st.sel = null; render(); $('s-arch').scrollIntoView({ block: 'center' }); };
       r.addEventListener('click', go); r.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
     });
   }
-  function renderStatic() {
-    sel('beta').innerHTML = `<thead><tr><th class="n">β</th><th class="n">Spec T τ</th><th class="n">Spec area</th><th class="n">Carry-save T τ</th><th class="n">Carry-save area</th></tr></thead><tbody>
-      ${D.beta.map(b => `<tr><td class="n">${b.beta.toFixed(2)}</td><td class="n">${f1(b.spec)}</td><td class="n">${Math.round(b.specA)}</td><td class="n">${f1(b.csa)}</td><td class="n">${Math.round(b.csaA)}</td></tr>`).join('')}</tbody>`;
-    const p = D.params;
-    sel('params').innerHTML = `β = ${p.beta}, μ<sub>n</sub>/μ<sub>p</sub> = ${p.mu}, diffusion/gate cap = ${p.gamma}, output load ${p.cload} C<sub>unit</sub>, inputs driven by a unit inverter. Times are in τ (one minimum NMOS driving one unit of gate cap); 1 FO4 = ${f1(D.designs[0].fo4)} τ.
-      Each gate's pull-down is a series/parallel tree with its dual as the pull-up; delay = ln2·R·C, event driven, over all 30,244 input transitions that change the output. Sizing: the critical-path gate with the best delay gain per added width is upsized ×1.25, repeated until it stops helping.
-      Stack-node capacitance, input slew and wiring are ignored, so use these numbers to rank designs and pick test vectors, then confirm in Spectre.`;
-  }
   function render() { syncControls(); renderSummary(); renderNet(); renderDetail(); renderPath(); renderRank(); }
-  renderStatic(); render();
+  render();
 })();
 </script>

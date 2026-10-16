@@ -1,0 +1,109 @@
+Calibration data: 7764 Spectre transitions in 20 circuits from calibration/asap7_tt_25c_0p9v.txt,calibration/asap7_carry_save_sweep.txt
+
+Previous assumptions (mu=2, no stack-node cap, tau fitted)
+  tau=0.406 ps  mu=2.000  gamma=1.000  gint=0.000  cload=20.00 C_fin  ks=1.000
+  per-transition RMS error 18.3%, worst-case delay error up to 29.1%
+  case                       design           sizing      fins trans    Spectre      model   error     S#     M#   rho
+  spec_xor_min               spec:aoi:xor     min          178   816    79.0 ps    78.0 ps   -1.3%     69     82  0.85
+  spec_xor_stack             spec:aoi:xor     stack_b15    372   816    93.1 ps    68.8 ps  -26.1%      5      8  0.78
+  csa_xor_min                csa:aoi:xor      min          122   816    60.5 ps    72.7 ps  +20.0%     29     15  0.93
+  csa_xor_stack              csa:aoi:xor      stack_b15    268   816    54.3 ps    45.8 ps  -15.6%     37    126  0.65
+  csa_mirror_min             csa:aoi:mirror   min          106   816    62.1 ps    67.5 ps   +8.6%     70    178  0.96
+  csa_mirror_stack           csa:aoi:mirror   stack_b15    308   816    60.3 ps    42.8 ps  -29.1%    274     33  0.71
+  aoi_fold_aoi_complex       csa:aoi:xor      min          122   103    60.4 ps    72.7 ps  +20.3%      7      8  0.91
+  aoi_fold_mirror_complex    csa:aoi:mirror   min          106   103    62.2 ps    67.5 ps   +8.5%      7     34  0.93
+  cmos_fold_cmos_complex     csa:cmos:xor     min          130   103    61.2 ps    69.3 ps  +13.2%      6     14  0.88
+  cmos_fold_mirror_complex   csa:cmos:mirror  min          110   103    62.2 ps    68.1 ps   +9.4%      6     14  0.97
+  nand_fold_nand_complex     csa:nand:xor     min          158   103    68.7 ps    74.9 ps   +9.0%     10      8  0.94
+  nand_fold_mirror_complex   csa:nand:mirror  min          118   103    69.2 ps    75.7 ps   +9.3%      2      2  0.97
+  size2_all2_b15             csa:aoi:mirror   all2         212   103    51.0 ps    51.2 ps   +0.2%     11     20  0.89
+  size2_mul2_b15             csa:aoi:mirror   mul2         146   103    61.4 ps    66.9 ps   +9.0%     11     23  0.95
+  size2_fa2_b15              csa:aoi:mirror   fa2          158   103    63.3 ps    69.2 ps   +9.4%     40     34  0.84
+  size2_out2_b15             csa:aoi:mirror   out2         120   103    57.2 ps    56.9 ps   -0.5%     13      4  0.87
+  size2_stack_b10            csa:aoi:mirror   stack_b10    230   103    55.8 ps    45.7 ps  -18.0%     43     10  0.73
+  size2_stack_b15            csa:aoi:mirror   stack_b15    308   103    60.2 ps    42.8 ps  -28.9%     28     10  0.73
+  full0                      csa:aoi:mirror   all2         212   816    50.9 ps    51.2 ps   +0.5%     36    147  0.91
+  full2                      csa:aoi:mirror   min          106   816    61.5 ps    67.5 ps   +9.7%    132    100  0.90
+  S# = rank of Spectre's slowest transition in the model's order; M# = rank of the model's slowest in Spectre's; rho = rank correlation
+  case ranking agreement: 146 of 190 pairs ordered the same as Spectre
+
+Fit A: stack-node cap, linear stacks, mu free
+  tau=0.562 ps  mu=0.789  gamma=1.317  gint=1.048  cload=21.08 C_fin  ks=1.000
+  per-transition RMS error 11.0%, worst-case delay error up to 10.4%
+  case                       design           sizing      fins trans    Spectre      model   error     S#     M#   rho
+  spec_xor_min               spec:aoi:xor     min          178   816    79.0 ps    72.3 ps   -8.5%      1      2  0.90
+  spec_xor_stack             spec:aoi:xor     stack_b15    372   816    93.1 ps    83.4 ps  -10.4%     20      8  0.84
+  csa_xor_min                csa:aoi:xor      min          122   816    60.5 ps    59.3 ps   -2.1%     30    340  0.89
+  csa_xor_stack              csa:aoi:xor      stack_b15    268   816    54.3 ps    54.3 ps   +0.1%    128    125  0.85
+  csa_mirror_min             csa:aoi:mirror   min          106   816    62.1 ps    58.9 ps   -5.2%    102     94  0.92
+  csa_mirror_stack           csa:aoi:mirror   stack_b15    308   816    60.3 ps    59.7 ps   -1.0%    367    329  0.68
+  aoi_fold_aoi_complex       csa:aoi:xor      min          122   103    60.4 ps    59.3 ps   -1.9%      9     58  0.87
+  aoi_fold_mirror_complex    csa:aoi:mirror   min          106   103    62.2 ps    58.6 ps   -5.8%     29     17  0.89
+  cmos_fold_cmos_complex     csa:cmos:xor     min          130   103    61.2 ps    60.0 ps   -1.9%      1      1  0.94
+  cmos_fold_mirror_complex   csa:cmos:mirror  min          110   103    62.2 ps    58.5 ps   -6.0%     21     14  0.90
+  nand_fold_nand_complex     csa:nand:xor     min          158   103    68.7 ps    66.7 ps   -2.9%      5      7  0.92
+  nand_fold_mirror_complex   csa:nand:mirror  min          118   103    69.2 ps    65.3 ps   -5.7%      2      2  0.95
+  size2_all2_b15             csa:aoi:mirror   all2         212   103    51.0 ps    49.7 ps   -2.5%     16     20  0.85
+  size2_mul2_b15             csa:aoi:mirror   mul2         146   103    61.4 ps    57.9 ps   -5.7%     16     23  0.91
+  size2_fa2_b15              csa:aoi:mirror   fa2          158   103    63.3 ps    60.9 ps   -3.7%     29     12  0.87
+  size2_out2_b15             csa:aoi:mirror   out2         120   103    57.2 ps    51.2 ps  -10.4%      3      4  0.89
+  size2_stack_b10            csa:aoi:mirror   stack_b10    230   103    55.8 ps    50.0 ps  -10.4%     58      9  0.77
+  size2_stack_b15            csa:aoi:mirror   stack_b15    308   103    60.2 ps    58.2 ps   -3.4%     42     71  0.75
+  full0                      csa:aoi:mirror   all2         212   816    50.9 ps    49.7 ps   -2.3%     73    122  0.88
+  full2                      csa:aoi:mirror   min          106   816    61.5 ps    58.9 ps   -4.2%     10     30  0.91
+  S# = rank of Spectre's slowest transition in the model's order; M# = rank of the model's slowest in Spectre's; rho = rank correlation
+  case ranking agreement: 160 of 190 pairs ordered the same as Spectre
+
+Fit B: stack-node cap, stack factor ks, mu fixed at the measured 1.20
+  tau=0.526 ps  mu=1.200  gamma=1.409  gint=1.053  cload=12.75 C_fin  ks=0.768
+  per-transition RMS error 14.0%, worst-case delay error up to 8.5%
+  case                       design           sizing      fins trans    Spectre      model   error     S#     M#   rho
+  spec_xor_min               spec:aoi:xor     min          178   816    79.0 ps    75.0 ps   -5.0%      2      2  0.73
+  spec_xor_stack             spec:aoi:xor     stack_b15    372   816    93.1 ps    85.2 ps   -8.5%     19      8  0.83
+  csa_xor_min                csa:aoi:xor      min          122   816    60.5 ps    58.5 ps   -3.3%      7     15  0.94
+  csa_xor_stack              csa:aoi:xor      stack_b15    268   816    54.3 ps    53.1 ps   -2.2%     98     20  0.83
+  csa_mirror_min             csa:aoi:mirror   min          106   816    62.1 ps    58.0 ps   -6.7%    122     94  0.93
+  csa_mirror_stack           csa:aoi:mirror   stack_b15    308   816    60.3 ps    56.7 ps   -6.1%    416    329  0.56
+  aoi_fold_aoi_complex       csa:aoi:xor      min          122   103    60.4 ps    58.5 ps   -3.1%      8      8  0.92
+  aoi_fold_mirror_complex    csa:aoi:mirror   min          106   103    62.2 ps    57.9 ps   -7.0%     29     34  0.87
+  cmos_fold_cmos_complex     csa:cmos:xor     min          130   103    61.2 ps    57.4 ps   -6.3%      1      1  0.94
+  cmos_fold_mirror_complex   csa:cmos:mirror  min          110   103    62.2 ps    58.8 ps   -5.5%     27     14  0.91
+  nand_fold_nand_complex     csa:nand:xor     min          158   103    68.7 ps    64.2 ps   -6.6%      9      8  0.96
+  nand_fold_mirror_complex   csa:nand:mirror  min          118   103    69.2 ps    66.2 ps   -4.3%      2      2  0.93
+  size2_all2_b15             csa:aoi:mirror   all2         212   103    51.0 ps    51.8 ps   +1.6%     28     20  0.83
+  size2_mul2_b15             csa:aoi:mirror   mul2         146   103    61.4 ps    57.4 ps   -6.5%     27     23  0.88
+  size2_fa2_b15              csa:aoi:mirror   fa2          158   103    63.3 ps    60.1 ps   -5.0%     27     34  0.88
+  size2_out2_b15             csa:aoi:mirror   out2         120   103    57.2 ps    52.3 ps   -8.5%      3      4  0.90
+  size2_stack_b10            csa:aoi:mirror   stack_b10    230   103    55.8 ps    51.0 ps   -8.5%     62     33  0.64
+  size2_stack_b15            csa:aoi:mirror   stack_b15    308   103    60.2 ps    55.4 ps   -8.0%     59     71  0.58
+  full0                      csa:aoi:mirror   all2         212   816    50.9 ps    51.8 ps   +1.9%    118    122  0.89
+  full2                      csa:aoi:mirror   min          106   816    61.5 ps    58.0 ps   -5.7%     19     30  0.94
+  S# = rank of Spectre's slowest transition in the model's order; M# = rank of the model's slowest in Spectre's; rho = rank correlation
+  case ranking agreement: 173 of 190 pairs ordered the same as Spectre
+
+Fit C: everything free
+  tau=0.641 ps  mu=1.069  gamma=0.966  gint=1.156  cload=11.79 C_fin  ks=0.804
+  per-transition RMS error 14.1%, worst-case delay error up to 7.4%
+  case                       design           sizing      fins trans    Spectre      model   error     S#     M#   rho
+  spec_xor_min               spec:aoi:xor     min          178   816    79.0 ps    73.5 ps   -7.0%      3      2  0.72
+  spec_xor_stack             spec:aoi:xor     stack_b15    372   816    93.1 ps    86.2 ps   -7.4%     19      8  0.83
+  csa_xor_min                csa:aoi:xor      min          122   816    60.5 ps    57.1 ps   -5.6%     28     15  0.92
+  csa_xor_stack              csa:aoi:xor      stack_b15    268   816    54.3 ps    53.3 ps   -1.8%    153     20  0.80
+  csa_mirror_min             csa:aoi:mirror   min          106   816    62.1 ps    57.9 ps   -6.9%    116     94  0.94
+  csa_mirror_stack           csa:aoi:mirror   stack_b15    308   816    60.3 ps    57.6 ps   -4.5%    452    329  0.48
+  aoi_fold_aoi_complex       csa:aoi:xor      min          122   103    60.4 ps    57.1 ps   -5.4%      8      8  0.91
+  aoi_fold_mirror_complex    csa:aoi:mirror   min          106   103    62.2 ps    57.7 ps   -7.3%     27     34  0.88
+  cmos_fold_cmos_complex     csa:cmos:xor     min          130   103    61.2 ps    56.9 ps   -7.1%      2      1  0.94
+  cmos_fold_mirror_complex   csa:cmos:mirror  min          110   103    62.2 ps    58.5 ps   -6.0%     24     14  0.91
+  nand_fold_nand_complex     csa:nand:xor     min          158   103    68.7 ps    63.6 ps   -7.4%      8      8  0.95
+  nand_fold_mirror_complex   csa:nand:mirror  min          118   103    69.2 ps    65.9 ps   -4.7%      2      2  0.93
+  size2_all2_b15             csa:aoi:mirror   all2         212   103    51.0 ps    51.7 ps   +1.3%     28     20  0.83
+  size2_mul2_b15             csa:aoi:mirror   mul2         146   103    61.4 ps    57.2 ps   -6.9%     27     23  0.89
+  size2_fa2_b15              csa:aoi:mirror   fa2          158   103    63.3 ps    60.3 ps   -4.6%     27     34  0.88
+  size2_out2_b15             csa:aoi:mirror   out2         120   103    57.2 ps    52.9 ps   -7.4%      3      4  0.89
+  size2_stack_b10            csa:aoi:mirror   stack_b10    230   103    55.8 ps    52.2 ps   -6.4%     59     33  0.65
+  size2_stack_b15            csa:aoi:mirror   stack_b15    308   103    60.2 ps    55.8 ps   -7.3%     60     71  0.54
+  full0                      csa:aoi:mirror   all2         212   816    50.9 ps    51.7 ps   +1.5%    123    122  0.89
+  full2                      csa:aoi:mirror   min          106   816    61.5 ps    57.9 ps   -5.9%     30     30  0.94
+  S# = rank of Spectre's slowest transition in the model's order; M# = rank of the model's slowest in Spectre's; rho = rank correlation
+  case ranking agreement: 179 of 190 pairs ordered the same as Spectre
