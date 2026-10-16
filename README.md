@@ -46,7 +46,7 @@ Refit after new simulations with `./build/neuron --calibrate calibration/asap7_t
 - **Architecture**: the spec datapath (multiplier → 2-bit adder → 3-bit adder → ReLU), and a carry-save version that counts nonzero and negative products with two parallel full adders and computes ReLU directly from the counts.
 - **Cells**: XOR style (16T NAND, 12T CMOS, 10T NOR+AOI), full adder (XOR-based or mirror), ReLU (3-bit mux or AND gating).
 - **Sizing**: 1, 2 or 3 fins everywhere; stack-compensated; and a whole-fin optimizer that upsizes critical-path gates while delay × area improves.
-- **Area**: a cell-area estimate for one uniform row of 1–3 fins per device, (2·fins + 4) × 27 nm tall at 54 nm poly pitch, so a 3-fin row matches ASAP7's 270 nm 7.5-track cell. Devices wider than the row fold into extra columns. It excludes routing and whitespace, so it ranks designs but is not the graded boundary area.
+- **Area**: the bounding box of an estimated floorplan, using the area study's template (`area-study-2026-10-16/estimate.py`): ASAP7-style cells 270 nm tall, so 1–3 fins per device cost no height, plus 4-track routing channels and a 72 nm margin. It reproduces the study's areas within 3%. It's a planning estimate, not a routed layout.
 
 Current results are in [`results/report.txt`](results/report.txt). Measured in Spectre so far:
 
@@ -58,7 +58,7 @@ Current results are in [`results/report.txt`](results/report.txt). Measured in S
 
 - Carry-save beats the spec datapath by more than 2× in delay × area.
 - Stack compensation hurts the spec datapath (79.0 → 93.1 ps). Uniform 2 fins beats every partial or stack sizing tried.
-- 1 fin vs 2 fins comes down to layout area. 2 fins is 1.21× faster, so it wins on delay × area if its layout is less than 1.21× the area of the 1-fin layout. With row height scaled to fin count, the estimate here is 1.33× (1 fin wins by about 9%). If the row height is fixed at ASAP7's 270 nm anyway, 2 or 3 fins come free.
+- 2 fins beats 1 fin on delay × area. The area study found that the installed ASAP7 library fits 1, 2 or 3 fins per device in the same 270 nm cell (INVxp33, INVxp67 and INVx1 all measure 0.162 × 0.270 µm). With routing channels included, uniform 2 fins had the lowest delay × area in all 18 layout scenarios the study tried. The model predicts uniform 3 fins at about 50.5 ps for the same area, which still needs a Spectre run.
 - Delay depends strongly on the output load: the 2-fin design measures 41 ps at 0.2 fF, 51 ps at 1 fF, 99 ps at 5 fF and 159 ps at 10 fF. The reported T depends on the testbench load.
 
 ### Run it

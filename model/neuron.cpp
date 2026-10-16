@@ -27,12 +27,10 @@
 //
 // Area
 //   fins       total fin count (what the simulations measured)
-//   cell area  estimate for one uniform row height, chosen per design. A row with r fins per
-//              device is (2r + 4) * 27 nm tall: r = 3 gives ASAP7's 270 nm 7.5-track row, r = 1
-//              gives 162 nm. A device wider than r folds into ceil(fins / r) columns. Per gate:
-//              columns = max(NMOS columns, PMOS columns) + 1 diffusion break, at 54 nm CPP.
-//              The smallest of r = 1..3 is reported. Excludes routing and whitespace, so it is a
-//              ranking aid, not the graded boundary area.
+//   area       bounding box of an estimated floorplan, using the team's area-study template:
+//              ASAP7-style cells (270 nm minimum height, so 1-3 fins per device cost no height),
+//              routing channels between rows and an outer margin. Planning estimate, not a routed
+//              layout; matches the area study's numbers for the same circuits.
 //
 // Usage: ./neuron                       report (calibrated defaults)
 //        ./neuron --json out.json        also export netlists for the diagram page
@@ -52,7 +50,12 @@ struct Params {
     double ks = 0.768;                     // series stack: m devices act like R*(1+(m-1)*ks)/m each (1 = linear)
     double stack_beta = 1.5;               // P/N ratio used by the stack sizing scheme
     int drvN = 1, drvP = 2;                // input driver inverter, fins (testbench uses 1N/2P)
-    int fmax = 3; double cpp_nm = 54, fin_pitch_nm = 27;  // area estimate: row = (2*fins + 4) fin pitches
+    // Area: the team's floorplan template (area-study-2026-10-16/estimate.py), calibrated to the
+    // installed ASAP7 7.5-track LEF widths. Cell width = 54 nm * (NMOS devices + 2); cell height =
+    // max(min_cell_h, 27 nm * (max N fins + max P fins + 4)) rounded up to 54 nm; rows separated by
+    // a routing channel of `tracks` 36 nm tracks; 72 nm outer margin; shelf placement in build order
+    // with the bounding-box aspect ratio kept between 0.5 and 2.
+    int fmax = 3; double cpp_nm = 54, fin_pitch_nm = 27, min_cell_h = 270; int tracks = 4;
 };
 enum Sizing { SZ_MIN, SZ_STACK };
 static const char* SZN[] = {"min", "stack"};
@@ -107,7 +110,7 @@ static void prep_junctions(Node& n) {
 }
 static int count_dev(const Node& n) { if (n.k == Node::LEAF) return 1; int r = 0; for (auto& c : n.ch) r += count_dev(c); return r; }
 static double sum_w(const Node& n) { if (n.k == Node::LEAF) return n.w; double r = 0; for (auto& c : n.ch) r += sum_w(c); return r; }
-static int columns(const Node& n, int fmax) { if (n.k == Node::LEAF) return (int)ceil(n.w / fmax - 1e-9); int r = 0; for (auto& c : n.ch) r += columns(c, fmax); return r; }
+static double max_w(const Node& n) { if (n.k == Node::LEAF) return n.w; double r = 0; for (auto& c : n.ch) r = max(r, max_w(c)); return r; }
 static void pin_widths(const Node& n, vector<double>& acc) { if (n.k == Node::LEAF) { acc[n.pin] += n.w; return; } for (auto& c : n.ch) pin_widths(c, acc); }
 static const double INF = 1e18;
 static bool conducts(const Node& n, const int* v, bool pmos) {
@@ -158,7 +161,7 @@ static Prim MSUM_{"MIR_S", 4, P({S({L(0), L(1), L(2)}), S({L(3), P({L(0), L(1), 
 // --------------------------------------------------------------- circuit
 struct Gate {
     const Prim* prim; vector<int> in; int out; string label; int mult = 1;
-    Node pdn, pun; int ndev = 0; vector<double> pinC; double diff = 0, fins = 0; int cols[4] = {0, 0, 0, 0};
+    Node pdn, pun; int ndev = 0; vector<double> pinC; double diff = 0, fins = 0; double w_nm = 0, h_nm = 0;
 };
 
 struct Circuit {
@@ -182,7 +185,8 @@ struct Circuit {
         g.pinC.assign(g.prim->npins, 0); pin_widths(g.pdn, g.pinC); pin_widths(g.pun, g.pinC);
         g.diff = top_width(g.pdn) + top_width(g.pun);
         g.fins = sum_w(g.pdn) + sum_w(g.pun);
-        for (int r = 1; r <= 3; r++) g.cols[r] = max(columns(g.pdn, r), columns(g.pun, r)) + 1;
+        g.w_nm = p.cpp_nm * (count_dev(g.pdn) + 2);
+        g.h_nm = max(p.min_cell_h, ceil(p.fin_pitch_nm * (max_w(g.pdn) + max_w(g.pun) + 4) / 54.0 - 1e-9) * 54.0);
     }
     int gate(const Prim& pr, vector<int> in) {
         Gate g; g.prim = &pr; g.in = in;
@@ -211,9 +215,24 @@ struct Circuit {
     void setMult(int gi, int m) { gates[gi].mult = m; applySize(gates[gi]); }
     int transistors() const { int n = 0; for (auto& g : gates) n += g.ndev; return n; }
     double fins() const { double a = 0; for (auto& g : gates) a += g.fins; return a; }
-    double rowArea(int r) const { int c = 0; for (auto& g : gates) c += g.cols[r]; return c * p.cpp_nm * (2 * r + 4) * p.fin_pitch_nm * 1e-6; }
-    int row() const { int b = 1; for (int r = 2; r <= p.fmax; r++) if (rowArea(r) < rowArea(b)) b = r; return b; }
-    double area_um2() const { return rowArea(row()); }
+    int row() const { double h = 0; for (auto& g : gates) h = max(h, g.h_nm); return (int)h; }   // tallest cell, nm
+    double area_um2() const {   // shelf placement, as in the area study
+        const double gap = ceil(36.0 * p.tracks / 54 - 1e-9) * 54, margin = 72;
+        double wmax = 0, wsum = 0; for (auto& g : gates) { wmax = max(wmax, g.w_nm); wsum += g.w_nm; }
+        double best = INF;
+        for (int cols = (int)ceil(wmax / p.cpp_nm - 1e-9); cols <= (int)ceil(wsum / p.cpp_nm - 1e-9); cols++) {
+            double W = cols * p.cpp_nm, x = 0, rowh = 0, actualw = 0, y = 0; bool any = false;
+            for (auto& g : gates) {
+                if (x + g.w_nm > W && any) { actualw = max(actualw, x); y += rowh + gap; x = 0; rowh = 0; }
+                x += g.w_nm; rowh = max(rowh, g.h_nm); any = true;
+            }
+            actualw = max(actualw, x); y += rowh;
+            double width = actualw + 2 * margin, height = y + 2 * margin;
+            if (width / height < 0.5 || width / height > 2) continue;
+            best = min(best, width * height * 1e-6);
+        }
+        return best;
+    }
 };
 
 // ------------------------------------------------------------ design space
@@ -779,7 +798,7 @@ int main(int argc, char** argv) {
     }
 
     printf("Model: ASAP7-calibrated  tau=%.3f ps  mu=%.2f  gamma=%.2f  gint=%.2f  cload=%.1f C_fin  stack_beta=%.2f\n", p.tau, p.mu, p.gamma, p.gint, p.cload, p.stack_beta);
-    printf("Delays in ps (pre-layout, TT 25 C 0.9 V). Cell area: best uniform row of 1-3 fins, (2r+4)x27 nm tall, 54 nm CPP, no routing.\n");
+    printf("Delays in ps (pre-layout, TT 25 C 0.9 V). Area: estimated floorplan bounding box (area-study template: 270 nm cells, %d-track channels, 72 nm margin).\n", p.tracks);
     printf("%zu output-changing transitions per design (weights held fixed).\n\n", PAIRS.size());
 
     printf("=== Functional check, 243 valid combinations ===\n");
@@ -799,9 +818,9 @@ int main(int argc, char** argv) {
     sort(order.begin(), order.end(), [&](int a, int b) { return score(R[a]) < score(R[b]); });
     double refTA = score(R[order[0]]);
 
-    printf("\n=== All designs: worst delay T (ps) / cell-area estimate A (um2); f/A relative to the best ===\n");
+    printf("\n=== All designs: worst delay T (ps) / floorplan area estimate A (um2); f/A relative to the best ===\n");
     printf("%-17s %-14s %-13s %-23s %5s | %-14s %-14s %-14s | %-14s | %-19s | %5s\n", "Architecture", "XOR", "Full adder", "ReLU", "Trans",
-           "1 fin", "2 fins", "3 fins", "stack", "optimized (row)", "f/A");
+           "1 fin", "2 fins", "3 fins", "stack", "optimized (cell h)", "f/A");
     for (int i : order) {
         auto& e = R[i];
         printf("%-17s %-14s %-13s %-23s %5d | %5.1f / %5.3f  %5.1f / %5.3f  %5.1f / %5.3f  | %5.1f / %5.3f  | %5.1f / %5.3f (%d) | %5.2f\n",

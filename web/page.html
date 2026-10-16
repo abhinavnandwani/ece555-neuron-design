@@ -114,7 +114,7 @@ li { margin: 2px 0; }
 
   <section>
     <h2>All designs</h2>
-    <p class="muted" style="margin-bottom:6px">Sorted by delay × area after optimized sizing. Times in ps from the ASAP7-calibrated model; area is the cell-area estimate in µm² (no routing). Click a row to load it.</p>
+    <p class="muted" style="margin-bottom:6px">Sorted by delay × area after optimized sizing. Times in ps from the ASAP7-calibrated model; area is the estimated floorplan bounding box in µm². Click a row to load it.</p>
     <div class="box" style="border:0"><table id="rank"></table></div>
   </section>
 
@@ -176,7 +176,7 @@ li { margin: 2px 0; }
 
   function renderSummary() {
     const c = cur();
-    sel('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Fins <b>${Math.round(c.fins)}</b></span><span>Cell area <b>${c.area.toFixed(3)}</b> µm²</span>
+    sel('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Fins <b>${Math.round(c.fins)}</b></span><span>Area estimate <b>${c.area.toFixed(3)}</b> µm²</span>
       <span>Worst delay <b>${f1(c.worst)} ps</b></span><span>Worst rise / fall <b>${f1(c.rise)} / ${f1(c.fall)} ps</b></span><span>Gates <b>${c.gates.length}</b></span>`;
     const a = c.worstFrom, b = c.worstTo, ks = ['x1', 'x2', 'w1', 'w2', 'wb'];
     const hold = ks.filter(k => a[k] === b[k]).map(k => `${k} = ${sg(a[k])}`).join(', ');
@@ -374,7 +374,7 @@ li { margin: 2px 0; }
       ${D.beta.map(b => `<tr><td class="n">${b.beta.toFixed(2)}</td><td class="n">${f1(b.spec)}</td><td class="n">${b.specA.toFixed(3)}</td><td class="n">${f1(b.csa)}</td><td class="n">${b.csaA.toFixed(3)}</td></tr>`).join('')}</tbody>`;
     const p = D.params;
     sel('params').innerHTML = `Calibrated to 7,764 Spectre transitions in 20 circuits (ASAP7 RVT, TT, 25 °C, 0.9 V, L = 20 nm, 1 fF per output, 1N/2P input drivers): τ = ${p.tau} ps per fin-RC, PMOS/NMOS resistance ${p.mu} (the measured drain-current ratio), output diffusion ${p.gamma} and stack-node diffusion ${p.gint} fin gate caps per fin, output load ${p.cload} fin gate caps (≈1 fF). Every circuit's worst-case delay is within 8.5% of Spectre, with the model reading about 5% low; it orders 173 of 190 circuit pairs the same way Spectre does.
-      Each gate is a series/parallel pull-down with its dual pull-up, timed with an Elmore model that includes stack-node capacitance and a fitted stack factor (a 2-device stack is about 1.8× slower than one device, not 2×). Every device is a whole number of fins. Cell area assumes one uniform row of 1–3 fins per device, (2·fins + 4) × 27 nm tall, 54 nm poly pitch, one diffusion break per gate, and no routing; it ranks designs but is not the graded boundary area.
+      Each gate is a series/parallel pull-down with its dual pull-up, timed with an Elmore model that includes stack-node capacitance and a fitted stack factor (a 2-device stack is about 1.8× slower than one device, not 2×). Every device is a whole number of fins. Area is the bounding box of an estimated floorplan, using the team's area-study template: ASAP7-style 270 nm cells (1–3 fins per device fit without extra height), 54 nm poly pitch, 4-track routing channels and a 72 nm margin. It matches the area study within 3% but is a planning estimate, not a routed layout.
       Optimized sizing adds whole fins to critical-path gates while it improves delay × area; Spectre shows the model over-credits partial upsizing, so treat that column as optimistic. Pre-layout only: no wires, corners, or extracted parasitics.`;
   }
   function render() { syncControls(); renderSummary(); renderNet(); renderDetail(); renderPath(); renderRank(); }
