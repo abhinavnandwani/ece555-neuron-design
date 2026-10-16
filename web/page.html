@@ -79,7 +79,7 @@ li { margin: 2px 0; }
 <main>
   <header>
     <h1>ECE555 neuron netlist</h1>
-    <p class="muted">out = ReLU(x1·w1 + x2·w2 + wb). Drawn from the netlists built by <code>model/neuron.cpp</code>; gate labels and net names are the ones in the code.</p>
+    <p class="muted">out = ReLU(x1·w1 + x2·w2 + wb). Drawn from the netlists built by <code>model/neuron.cpp</code>, calibrated to ASAP7 Spectre simulations; gate labels and net names are the ones in the code.</p>
   </header>
 
   <section>
@@ -88,7 +88,7 @@ li { margin: 2px 0; }
       <label for="s-xor">XOR / XNOR<select id="s-xor"><option value="0">NAND4 (16T)</option><option value="1">CMOS12</option><option value="2">NOR+AOI (10T)</option></select></label>
       <label for="s-fa">Full adder<select id="s-fa"><option value="0">XOR-based FA</option><option value="1">Mirror FA</option></select></label>
       <label for="s-relu">ReLU<select id="s-relu"><option value="0">3-bit MUX</option><option value="1">AND gating</option></select></label>
-      <label for="s-size">Sizing<select id="s-size"><option value="unit">Unit (all gates size 1)</option><option value="balanced">Balanced (min delay × area)</option><option value="fastest">Fastest</option></select></label>
+      <label for="s-size">Sizing<select id="s-size"><option value="min">1 fin everywhere</option><option value="stack">Stack-compensated</option><option value="balanced">Optimized (min delay × area)</option><option value="fastest">Fastest found</option></select></label>
     </div>
     <div class="summary" id="summary"></div>
     <p class="tb" id="tb"></p>
@@ -98,7 +98,7 @@ li { margin: 2px 0; }
     <h2>Gate-level schematic</h2>
     <div class="zoom">Zoom <button type="button" data-z="fit">Fit</button><button type="button" data-z="1">100%</button><button type="button" data-z="1.5">150%</button></div>
     <div class="box" id="netbox"><svg id="net" role="img" aria-label="Gate-level schematic of the neuron"></svg></div>
-    <p class="key"><span>Orange</span> is the worst-case path, with arrival times in τ. Click a gate to see its transistors. Boxes are complex gates; the small letters are their pin names.</p>
+    <p class="key"><span>Orange</span> is the worst-case path, with arrival times in ps. Click a gate to see its transistors. Boxes are complex gates; the small letters are their pin names.</p>
   </section>
 
   <div class="two">
@@ -114,7 +114,7 @@ li { margin: 2px 0; }
 
   <section>
     <h2>All designs</h2>
-    <p class="muted" style="margin-bottom:6px">Sorted by delay × area after balanced sizing. Area is the sum of device widths in W<sub>unit</sub>. Click a row to load it.</p>
+    <p class="muted" style="margin-bottom:6px">Sorted by delay × area after optimized sizing. Times in ps from the ASAP7-calibrated model; area is the cell-area estimate in µm² (no routing). Click a row to load it.</p>
     <div class="box" style="border:0"><table id="rank"></table></div>
   </section>
 
@@ -131,7 +131,7 @@ li { margin: 2px 0; }
       <p style="margin-top:6px">This replaces both ripple adders and the ReLU mux with one full-adder delay plus one gate. It still contains a multiplier, adders and the activation, but check with your TA that a restructured datapath is allowed (slide 14 calls its block list an example).</p>
     </section>
     <section>
-      <h2>Beta sweep (unit sizing)</h2>
+      <h2>P/N ratio for stack sizing</h2>
       <div class="box" style="border:0"><table id="beta"></table></div>
     </section>
   </div>
@@ -147,7 +147,7 @@ li { margin: 2px 0; }
 (function () {
   const D = JSON.parse(document.getElementById('data').textContent);
   const NS = 'http://www.w3.org/2000/svg';
-  const st = { ai: 1, xi: 2, fi: 0, ri: 2, sz: 'balanced', sel: null, zoom: 'fit' };
+  const st = { ai: 1, xi: 2, fi: 1, ri: 2, sz: 'balanced', sel: null, zoom: 'fit' };
   try { const z = localStorage.getItem('neuron-zoom'); if (z) st.zoom = z; } catch (e) {}
   const find = (ai, xi, fi, ri, sz) => D.designs.find(d => d.ai === ai && d.xi === xi && d.fi === fi && d.ri === ri && d.sizing === sz);
   const cur = () => find(st.ai, st.xi, st.fi, st.ri, st.sz);
@@ -176,12 +176,12 @@ li { margin: 2px 0; }
 
   function renderSummary() {
     const c = cur();
-    sel('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Area <b>${Math.round(c.area)}</b> W<sub>unit</sub></span>
-      <span>Worst delay <b>${f1(c.worst)} τ</b> (${f1(c.worst / c.fo4)} FO4)</span><span>Worst rise / fall <b>${f1(c.rise)} / ${f1(c.fall)} τ</b></span><span>Gates <b>${c.gates.length}</b></span>`;
-    const a = c.wfixFrom, b = c.wfixTo, ks = ['x1', 'x2', 'w1', 'w2', 'wb'];
+    sel('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Fins <b>${Math.round(c.fins)}</b></span><span>Cell area <b>${c.area.toFixed(3)}</b> µm²</span>
+      <span>Worst delay <b>${f1(c.worst)} ps</b></span><span>Worst rise / fall <b>${f1(c.rise)} / ${f1(c.fall)} ps</b></span><span>Gates <b>${c.gates.length}</b></span>`;
+    const a = c.worstFrom, b = c.worstTo, ks = ['x1', 'x2', 'w1', 'w2', 'wb'];
     const hold = ks.filter(k => a[k] === b[k]).map(k => `${k} = ${sg(a[k])}`).join(', ');
     const step = ks.filter(k => a[k] !== b[k]).map(k => `${k} ${sg(a[k])} → ${sg(b[k])}`).join(', ');
-    sel('tb').innerHTML = `Worst-case testbench vector (weights fixed): hold <b class="mono">${esc(hold)}</b>, step <b class="mono">${esc(step)}</b>, output ${val(a)} → ${val(b)} (${f1(c.wfix)} τ).`;
+    sel('tb').innerHTML = `Model's slowest transition: hold <b class="mono">${esc(hold)}</b>, step <b class="mono">${esc(step)}</b>, output ${val(a)} \u2192 ${val(b)} (${f1(c.worst)} ps). The model shortlists slow vectors well but does not reliably pick the single slowest one, so take the testbench worst case from the Spectre sweep.`;
   }
 
   /* schematic */
@@ -263,10 +263,10 @@ li { margin: 2px 0; }
     c.gates.forEach((g, gi) => {
       const p = pos[gi];
       const ge = el('g', { class: 'gate' + (critG.has(gi) ? ' crit' : '') + (st.sel === gi ? ' sel' : ''), transform: `translate(${p.x},${p.y})`, tabindex: 0, role: 'button', 'aria-label': g.label }, svg);
-      el('title', {}, ge, `${g.label} → ${nl(c, g.out)}${g.size !== 1 ? ' (size ' + fw(g.size) + ')' : ''}`);
+      el('title', {}, ge, `${g.label} → ${nl(c, g.out)}${g.size !== 1 ? ' (fins ×' + g.size + ')' : ''}`);
       el('rect', { x: -8, y: -4, width: GW + 12, height: p.h + 20, fill: 'transparent', 'pointer-events': 'all' }, ge);
       shape(ge, g, p);
-      el('text', { class: 'lbl', x: 24, y: p.h + 12, 'text-anchor': 'middle' }, ge, g.label.split('/')[1] + (g.size !== 1 ? ' ×' + fw(g.size) : ''));
+      el('text', { class: 'lbl', x: 24, y: p.h + 12, 'text-anchor': 'middle' }, ge, g.label.split('/')[1] + (g.size !== 1 ? ' ×' + g.size : ''));
       const al = c.nets[g.out].alias;
       if (al && !c.outputs.includes(g.out)) el('text', { class: 'netlbl', x: GW + 4, y: p.h / 2 - 5 }, ge, al);
       if (arr[g.out] !== undefined) el('text', { class: 'timing', x: GW + 4, y: p.h / 2 + 12 }, ge, 't=' + f1(arr[g.out]));
@@ -305,7 +305,7 @@ li { margin: 2px 0; }
       if (pmos) { el('circle', { class: 'b', cx: cx - 12.5, cy: y + 26, r: 3.3 }, svg); el('line', { class: 'dev', x1: cx - 16, y1: y + 26, x2: cx - 30, y2: y + 26 }, svg); }
       else el('line', { class: 'dev', x1: cx - 9, y1: y + 26, x2: cx - 30, y2: y + 26 }, svg);
       el('text', { class: 'p', x: cx - 34, y: y + 24, 'text-anchor': 'end' }, svg, pins[o.n.pin]);
-      el('text', { class: 'w', x: cx - 34, y: y + 37, 'text-anchor': 'end' }, svg, 'W ' + fw(o.n.w));
+      el('text', { class: 'w', x: cx - 34, y: y + 37, 'text-anchor': 'end' }, svg, 'nfin ' + fw(o.n.w));
       return;
     }
     if (o.n.k === 'S') { let yy = y; o.k.forEach(q => { spD(svg, q, x + o.tx - q.tx, yy, pmos, pins); yy += q.h; }); return; }
@@ -322,8 +322,8 @@ li { margin: 2px 0; }
     const c = cur(), box = sel('detail');
     if (st.sel === null) { box.innerHTML = '<p class="muted">Click a gate in the schematic or a row in the path table.</p>'; return; }
     const g = c.gates[st.sel], wn = pinW(g.pdn, {}), wp = pinW(g.pun, {});
-    box.innerHTML = `<p><b class="mono">${esc(g.label)}</b> &nbsp;${g.type}, ${g.ndev} transistors, size ${fw(g.size)}, drives <code>${esc(nl(c, g.out))}</code> (load ${f1(c.nets[g.out].C)} C<sub>unit</sub>)</p>
-      <table style="margin:8px 0"><thead><tr><th>Pin</th><th>Net</th><th class="n">NMOS W</th><th class="n">PMOS W</th></tr></thead><tbody>
+    box.innerHTML = `<p><b class="mono">${esc(g.label)}</b> &nbsp;${g.type}, ${g.ndev} transistors, fin multiplier ${g.size}, drives <code>${esc(nl(c, g.out))}</code> (load ${f1(c.nets[g.out].C)} fin gate caps)</p>
+      <table style="margin:8px 0"><thead><tr><th>Pin</th><th>Net</th><th class="n">NMOS fins (all devices)</th><th class="n">PMOS fins (all devices)</th></tr></thead><tbody>
       ${g.pins.map((pn, i) => `<tr><td class="c">${pn}</td><td class="c">${esc(nl(c, g.in[i]))}</td><td class="n">${fw(wn[i] || 0)}</td><td class="n">${fw(wp[i] || 0)}</td></tr>`).join('')}</tbody></table>
       <div class="box tx"><svg id="txsvg" role="img" aria-label="Transistors of ${esc(g.label)}"></svg></div>`;
     const svg = sel('txsvg'), Lp = spL(g.pun), Ln = spL(g.pdn);
@@ -352,32 +352,30 @@ li { margin: 2px 0; }
       return `<tr${d >= 0 ? ` class="pick${d === st.sel ? ' cur' : ''}" tabindex="0" data-g="${d}"` : ''}><td class="n">${k}</td><td class="c">${esc(d >= 0 ? c.gates[d].label : c.nets[n].name)}</td><td class="c">${esc(d >= 0 ? c.nets[n].alias : '')}</td><td class="n">${k ? '+' + f1(t - c.path[k - 1][1]) : ''}</td><td class="n">${f1(t)}</td></tr>`;
     }).join('');
     const t = sel('path');
-    t.innerHTML = `<thead><tr><th class="n">#</th><th>Gate</th><th>Net</th><th class="n">Stage τ</th><th class="n">Arrival τ</th></tr></thead><tbody>${rows}</tbody>`;
+    t.innerHTML = `<thead><tr><th class="n">#</th><th>Gate</th><th>Net</th><th class="n">Stage ps</th><th class="n">Arrival ps</th></tr></thead><tbody>${rows}</tbody>`;
     t.querySelectorAll('tr[data-g]').forEach(r => { r.addEventListener('click', () => pick(+r.dataset.g)); r.addEventListener('keydown', e => { if (e.key === 'Enter') pick(+r.dataset.g); }); });
   }
   function renderRank() {
-    const keys = D.designs.filter(d => d.sizing === 'unit');
-    const row = u => {
-      const b = find(u.ai, u.xi, u.fi, u.ri, 'balanced'), f = find(u.ai, u.xi, u.fi, u.ri, 'fastest');
-      return { u, b, f };
-    };
+    const keys = D.designs.filter(d => d.sizing === 'min');
+    const row = u => ({ u, s: find(u.ai, u.xi, u.fi, u.ri, 'stack'), b: find(u.ai, u.xi, u.fi, u.ri, 'balanced') });
     const rows = keys.map(row).sort((p, q) => p.b.worst * p.b.area - q.b.worst * q.b.area);
+    const best = rows[0].b.worst * rows[0].b.area;
     const isCur = r => r.u.ai === st.ai && r.u.xi === st.xi && r.u.fi === st.fi && r.u.ri === st.ri;
-    sel('rank').innerHTML = `<thead><tr><th>Architecture</th><th>XOR</th><th>Full adder</th><th>ReLU</th><th class="n">Transistors</th><th class="n">Area</th><th class="n">T unit</th><th class="n">T balanced</th><th class="n">T fastest</th><th class="n">Area fastest</th></tr></thead><tbody>
+    sel('rank').innerHTML = `<thead><tr><th>Architecture</th><th>XOR</th><th>Full adder</th><th>ReLU</th><th class="n">Transistors</th><th class="n">T 1-fin</th><th class="n">A 1-fin</th><th class="n">T stack</th><th class="n">A stack</th><th class="n">T optimized</th><th class="n">A optimized</th><th class="n">f/A vs best</th></tr></thead><tbody>
       ${rows.map(r => `<tr class="pick${isCur(r) ? ' cur' : ''}" tabindex="0" data-k="${r.u.ai},${r.u.xi},${r.u.fi},${r.u.ri}"><td>${r.u.arch}</td><td>${r.u.xor}</td><td>${r.u.fa}</td><td>${r.u.relu}</td>
-      <td class="n">${r.u.trans}</td><td class="n">${Math.round(r.u.area)}</td><td class="n">${f1(r.u.worst)}</td><td class="n">${f1(r.b.worst)}</td><td class="n">${f1(r.f.worst)}</td><td class="n">${Math.round(r.f.area)}</td></tr>`).join('')}</tbody>`;
+      <td class="n">${r.u.trans}</td><td class="n">${f1(r.u.worst)}</td><td class="n">${r.u.area.toFixed(3)}</td><td class="n">${f1(r.s.worst)}</td><td class="n">${r.s.area.toFixed(3)}</td><td class="n">${f1(r.b.worst)}</td><td class="n">${r.b.area.toFixed(3)}</td><td class="n">${(best / (r.b.worst * r.b.area)).toFixed(2)}</td></tr>`).join('')}</tbody>`;
     sel('rank').querySelectorAll('tr[data-k]').forEach(r => {
       const go = () => { [st.ai, st.xi, st.fi, st.ri] = r.dataset.k.split(',').map(Number); st.sel = null; render(); window.scrollTo({ top: 0 }); };
       r.addEventListener('click', go); r.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
     });
   }
   function renderStatic() {
-    sel('beta').innerHTML = `<thead><tr><th class="n">β</th><th class="n">Spec T τ</th><th class="n">Spec area</th><th class="n">Carry-save T τ</th><th class="n">Carry-save area</th></tr></thead><tbody>
-      ${D.beta.map(b => `<tr><td class="n">${b.beta.toFixed(2)}</td><td class="n">${f1(b.spec)}</td><td class="n">${Math.round(b.specA)}</td><td class="n">${f1(b.csa)}</td><td class="n">${Math.round(b.csaA)}</td></tr>`).join('')}</tbody>`;
+    sel('beta').innerHTML = `<thead><tr><th class="n">P/N</th><th class="n">Spec T ps</th><th class="n">Spec µm²</th><th class="n">Carry-save T ps</th><th class="n">Carry-save µm²</th></tr></thead><tbody>
+      ${D.beta.map(b => `<tr><td class="n">${b.beta.toFixed(2)}</td><td class="n">${f1(b.spec)}</td><td class="n">${b.specA.toFixed(3)}</td><td class="n">${f1(b.csa)}</td><td class="n">${b.csaA.toFixed(3)}</td></tr>`).join('')}</tbody>`;
     const p = D.params;
-    sel('params').innerHTML = `β = ${p.beta}, μ<sub>n</sub>/μ<sub>p</sub> = ${p.mu}, diffusion/gate cap = ${p.gamma}, output load ${p.cload} C<sub>unit</sub>, inputs driven by a unit inverter. Times are in τ (one minimum NMOS driving one unit of gate cap); 1 FO4 = ${f1(D.designs[0].fo4)} τ.
-      Each gate's pull-down is a series/parallel tree with its dual as the pull-up; delay = ln2·R·C, event driven, over all 30,244 input transitions that change the output. Sizing: the critical-path gate with the best delay gain per added width is upsized ×1.25, repeated until it stops helping.
-      Stack-node capacitance, input slew and wiring are ignored, so use these numbers to rank designs and pick test vectors, then confirm in Spectre.`;
+    sel('params').innerHTML = `Calibrated to 4,896 Spectre transitions (ASAP7 RVT, TT, 25 °C, 0.9 V, L = 20 nm, 1 fF per output, 1N/2P input drivers): τ = ${p.tau} ps per fin-RC, PMOS/NMOS resistance ${p.mu} (the measured drain-current ratio), output diffusion ${p.gamma} and stack-node diffusion ${p.gint} fin gate caps per fin, output load ${p.cload} fin gate caps (≈1 fF). Worst-case delay of each simulated circuit is within 10% of Spectre; per-transition RMS error 12.7%.
+      Each gate is a series/parallel pull-down with its dual pull-up, timed with an Elmore model that includes stack-node capacitance and a fitted stack factor (a 2-device stack is about 1.5× slower, not 2×). Every device is a whole number of fins. Cell area assumes one uniform row of 1–3 fins per device, (2·fins + 4) × 27 nm tall, 54 nm poly pitch, one diffusion break per gate, and no routing; it ranks designs but is not the graded boundary area.
+      Optimized sizing adds whole fins to critical-path gates while it improves delay × area. Pre-layout only: no wires, corners, or extracted parasitics.`;
   }
   function render() { syncControls(); renderSummary(); renderNet(); renderDetail(); renderPath(); renderRank(); }
   renderStatic(); render();

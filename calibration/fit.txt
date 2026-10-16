@@ -1,0 +1,81 @@
+Calibration data: 4896 Spectre transitions from calibration/asap7_tt_25c_0p9v.txt
+
+Previous assumptions (mu=2, no stack-node cap, tau fitted)
+  tau=0.414 ps  mu=2.000  gamma=1.000  gint=0.000  cload=20.00 C_fin  ks=1.000
+  per-transition RMS error 19.1%, worst-case delay error up to 27.8%
+  circuit               Spectre      model   error
+  spec_xor_min           79.0 ps     79.4 ps   +0.5%
+  spec_xor_stack         93.1 ps     70.1 ps  -24.8%
+  csa_xor_min            60.5 ps     74.0 ps  +22.2%
+  csa_xor_stack          54.3 ps     46.6 ps  -14.1%
+  csa_mirror_min         62.1 ps     68.7 ps  +10.6%
+  csa_mirror_stack       60.3 ps     43.6 ps  -27.8%
+  circuit            Spectre's slowest transition ranks #k of 816 in the model; model's slowest ranks #k in Spectre; rank correlation
+  spec_xor_min       #68   #82    rho=0.85
+  spec_xor_stack     #5    #8     rho=0.78
+  csa_xor_min        #29   #15    rho=0.93
+  csa_xor_stack      #37   #126   rho=0.65
+  csa_mirror_min     #70   #178   rho=0.96
+  csa_mirror_stack   #274  #33    rho=0.71
+  ranking fastest->slowest  Spectre: csa_xor_stack csa_mirror_stack csa_xor_min csa_mirror_min spec_xor_min spec_xor_stack
+                           model:   csa_mirror_stack csa_xor_stack csa_mirror_min spec_xor_stack csa_xor_min spec_xor_min
+
+Fit A: stack-node cap, linear stacks, mu free
+  tau=0.740 ps  mu=0.809  gamma=0.732  gint=0.607  cload=17.32 C_fin  ks=1.000
+  per-transition RMS error 12.2%, worst-case delay error up to 8.8%
+  circuit               Spectre      model   error
+  spec_xor_min           79.0 ps     72.3 ps   -8.5%
+  spec_xor_stack         93.1 ps     85.0 ps   -8.8%
+  csa_xor_min            60.5 ps     58.5 ps   -3.4%
+  csa_xor_stack          54.3 ps     52.7 ps   -3.0%
+  csa_mirror_min         62.1 ps     56.7 ps   -8.8%
+  csa_mirror_stack       60.3 ps     58.3 ps   -3.4%
+  circuit            Spectre's slowest transition ranks #k of 816 in the model; model's slowest ranks #k in Spectre; rank correlation
+  spec_xor_min       #1    #2     rho=0.88
+  spec_xor_stack     #29   #8     rho=0.85
+  csa_xor_min        #38   #340   rho=0.89
+  csa_xor_stack      #169  #125   rho=0.86
+  csa_mirror_min     #47   #94    rho=0.93
+  csa_mirror_stack   #425  #329   rho=0.54
+  ranking fastest->slowest  Spectre: csa_xor_stack csa_mirror_stack csa_xor_min csa_mirror_min spec_xor_min spec_xor_stack
+                           model:   csa_xor_stack csa_mirror_min csa_mirror_stack csa_xor_min spec_xor_min spec_xor_stack
+
+Fit B: stack-node cap, stack factor ks, mu fixed at the measured 1.20
+  tau=0.590 ps  mu=1.200  gamma=1.135  gint=1.027  cload=19.90 C_fin  ks=0.520
+  per-transition RMS error 12.7%, worst-case delay error up to 9.9%
+  circuit               Spectre      model   error
+  spec_xor_min           79.0 ps     74.8 ps   -5.3%
+  spec_xor_stack         93.1 ps     84.0 ps   -9.9%
+  csa_xor_min            60.5 ps     58.8 ps   -2.8%
+  csa_xor_stack          54.3 ps     51.6 ps   -5.0%
+  csa_mirror_min         62.1 ps     56.0 ps   -9.9%
+  csa_mirror_stack       60.3 ps     56.2 ps   -6.8%
+  circuit            Spectre's slowest transition ranks #k of 816 in the model; model's slowest ranks #k in Spectre; rank correlation
+  spec_xor_min       #1    #2     rho=0.89
+  spec_xor_stack     #12   #8     rho=0.84
+  csa_xor_min        #9    #15    rho=0.97
+  csa_xor_stack      #82   #20    rho=0.91
+  csa_mirror_min     #56   #94    rho=0.95
+  csa_mirror_stack   #366  #329   rho=0.50
+  ranking fastest->slowest  Spectre: csa_xor_stack csa_mirror_stack csa_xor_min csa_mirror_min spec_xor_min spec_xor_stack
+                           model:   csa_xor_stack csa_mirror_min csa_mirror_stack csa_xor_min spec_xor_min spec_xor_stack
+
+Fit C: everything free
+  tau=0.682 ps  mu=0.872  gamma=0.882  gint=1.511  cload=25.20 C_fin  ks=0.531
+  per-transition RMS error 11.1%, worst-case delay error up to 10.2%
+  circuit               Spectre      model   error
+  spec_xor_min           79.0 ps     72.1 ps   -8.8%
+  spec_xor_stack         93.1 ps     83.9 ps   -9.9%
+  csa_xor_min            60.5 ps     56.7 ps   -6.4%
+  csa_xor_stack          54.3 ps     51.7 ps   -4.7%
+  csa_mirror_min         62.1 ps     55.8 ps  -10.2%
+  csa_mirror_stack       60.3 ps     54.2 ps  -10.2%
+  circuit            Spectre's slowest transition ranks #k of 816 in the model; model's slowest ranks #k in Spectre; rank correlation
+  spec_xor_min       #4    #2     rho=0.92
+  spec_xor_stack     #10   #8     rho=0.85
+  csa_xor_min        #9    #340   rho=0.92
+  csa_xor_stack      #108  #6     rho=0.91
+  csa_mirror_min     #58   #94    rho=0.94
+  csa_mirror_stack   #318  #42    rho=0.45
+  ranking fastest->slowest  Spectre: csa_xor_stack csa_mirror_stack csa_xor_min csa_mirror_min spec_xor_min spec_xor_stack
+                           model:   csa_xor_stack csa_mirror_stack csa_mirror_min csa_xor_min spec_xor_min spec_xor_stack

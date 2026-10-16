@@ -20,30 +20,41 @@ Submit each graded milestone to its corresponding Canvas submission area as **on
 
 ## Design-space model
 
-[`model/neuron.cpp`](model/neuron.cpp) models the whole neuron at transistor level before anything is drawn in Virtuoso. Every gate is a static CMOS pull-up/pull-down network with real device widths, and an event-driven RC simulator times all 30,244 input transitions that change the output. It checks every design against `ReLU(x1·w1 + x2·w2 + wb)` for all 243 valid input/weight combinations.
+[`model/neuron.cpp`](model/neuron.cpp) models the whole neuron at transistor level before anything is drawn in Virtuoso. Every gate is a static CMOS pull-up/pull-down network with an integer number of fins per device. An event-driven Elmore simulator, including stack-node capacitance, times all 816 transitions that change the output with the weights held fixed. Every design is checked against `ReLU(x1·w1 + x2·w2 + wb)` for all 243 valid input/weight combinations.
 
-It explores:
+### ASAP7 calibration
+
+The timing model is fitted to 4,896 Spectre transitions ([`calibration/asap7_tt_25c_0p9v.txt`](calibration/asap7_tt_25c_0p9v.txt)). These cover six circuits (spec datapath, carry-save with XOR full adders, carry-save with mirror full adders, each at 1-fin and stack-compensated sizing) in ASAP7 RVT, TT, 25 °C, 0.9 V, L = 20 nm, with 1 fF per output and 1N/2P input drivers.
+
+- The PMOS/NMOS resistance ratio is fixed at the measured drain-current ratio, 49.35 µA / 41.19 µA = 1.20.
+- Fitted: τ = 0.59 ps; output and stack-node diffusion of about 1.1 and 1.0 fin gate caps per fin; 1 fF ≈ 20 fin gate caps (about 0.05 fF per fin); and a stack factor that makes a 2-device stack about 1.5× slower, not 2×.
+- Worst-case delay of each of the six circuits is within 10% of Spectre, and the per-transition RMS error is 12.7% ([`calibration/fit.txt`](calibration/fit.txt)). The previous planar assumptions (PMOS 2× weaker, no stack-node capacitance) were off by up to 28% and got the sizing conclusions backwards.
+- The model ranks transitions well (rank correlation 0.84–0.97 on five circuits) but does not reliably pick the single slowest one. **Take testbench worst-case vectors from Spectre, not the model.**
+
+Rerun the fit after new simulations with `./build/neuron --calibrate calibration/asap7_tt_25c_0p9v.txt`.
+
+### What it explores
 
 - **Architecture**: the spec datapath (multiplier → 2-bit adder → 3-bit adder → ReLU), and a carry-save version that counts nonzero and negative products with two parallel full adders and computes ReLU directly from the counts.
 - **Cells**: XOR style (16T NAND, 12T CMOS, 10T NOR+AOI), full adder (XOR-based or mirror), ReLU (3-bit mux or AND gating).
-- **Sizing**: greedy critical-path upsizing, reported at unit, balanced (min delay × area) and fastest points.
-- **Beta**: a global P/N ratio sweep.
+- **Sizing**: 1, 2 or 3 fins everywhere; stack-compensated; and a whole-fin optimizer that upsizes critical-path gates while delay × area improves.
+- **Area**: a cell-area estimate for one uniform row of 1–3 fins per device, (2·fins + 4) × 27 nm tall at 54 nm poly pitch, so a 3-fin row matches ASAP7's 270 nm 7.5-track cell. Devices wider than the row fold into extra columns. It excludes routing and whitespace, so it ranks designs but is not the graded boundary area.
 
-Current results are in [`results/report.txt`](results/report.txt). The best carry-save design is about 36% faster and 29% smaller than the best spec datapath. Times are in τ, the RC of one minimum NMOS driving one unit of gate capacitance. The model ignores stack-node capacitance, input slew and wiring, so use it to rank designs and choose test vectors, then confirm in Spectre and on the extracted netlist.
+Current results are in [`results/report.txt`](results/report.txt). In short:
+
+- Carry-save beats the spec datapath by about 2.3× in delay × area. With Spectre's measured delays and the model's area estimate, the 1-fin carry-save mirror design is best, at 62.1 ps.
+- Stack compensation **hurts** the spec datapath in Spectre (79.0 → 93.1 ps). With a 1.2 P/N ratio, PMOS needs little upsizing, and extra fins mostly add load.
+- 1-fin rows win on area. Folding a few critical-path gates to 2 fins is the model's best delay × area point; that sizing still needs a Spectre run.
 
 ### Run it
 
 ```sh
-make page    # compile, run all experiments (~30 s), build the diagram page
+make page    # compile, run all experiments (a few seconds), build the diagram page
 ```
 
-This writes `results/report.txt` and `build/site/index.html`. The page is self-contained, so open it in any browser. It shows the gate-level schematic of every design with the worst-case path, the transistor networks and widths of each gate, and the comparison tables. Gate labels and net names on the page match the code.
+This writes `results/report.txt` and `build/site/index.html`. The page is self-contained, so open it in any browser. It shows the gate-level schematic of every design with the critical path, the transistor networks and fins of each gate, and the comparison tables. Gate labels and net names on the page match the code.
 
-Model parameters can be overridden, for example after measuring the PMOS/NMOS strength ratio of the PDK in Spectre:
-
-```sh
-./build/neuron --mu 1.8 --beta 1.5 --cload 6
-```
+Parameters can be overridden, for example `./build/neuron --mu 1.2 --cload 20 --stack_beta 1.0`.
 
 ### Live page
 
