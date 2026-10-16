@@ -1,0 +1,385 @@
+<title>ECE555 Neuron Netlist</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one plain column of sections; tables and drawings scroll inside their own boxes. */
+:root {
+  --bg: #ffffff; --fg: #111111; --muted: #555b62; --line: #d7dadd; --wire: #9aa1a8; --soft: #f4f5f6;
+  --crit: #c2410c; --sel: #1f5fd0;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #121416; --fg: #e8eaec; --muted: #9aa1a8; --line: #33383d; --wire: #59616a; --soft: #1b1e21; --crit: #ff8a47; --sel: #79a8ff; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #121416; --fg: #e8eaec; --muted: #9aa1a8; --line: #33383d; --wire: #59616a; --soft: #1b1e21; --crit: #ff8a47; --sel: #79a8ff; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--sans); padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1200px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 0 0 8px; }
+p { margin: 0; max-width: 80ch; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+section { min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+select { font: 14px var(--sans); padding: 4px 6px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; }
+select:disabled { opacity: 0.5; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px 28px; margin-top: 12px; }
+.summary b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tb { margin-top: 8px; }
+.box { overflow-x: auto; border: 1px solid var(--line); }
+svg { display: block; }
+svg text { font-family: var(--mono); fill: var(--fg); }
+.zoom { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+button { font: 12px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+button[aria-pressed="true"] { border-color: var(--fg); font-weight: 600; }
+button:focus-visible, select:focus-visible, tr[tabindex]:focus-visible, .gate:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
+.key { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.key span { color: var(--crit); font-weight: 600; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 5px 8px; border-bottom: 1px solid var(--fg); white-space: nowrap; }
+td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.c { font-family: var(--mono); font-size: 12.5px; }
+tr.pick { cursor: pointer; }
+tr.pick:hover td { background: var(--soft); }
+tr.cur td { background: var(--soft); font-weight: 600; }
+.g-body { fill: var(--bg); stroke: var(--fg); stroke-width: 1.3; }
+.gate { cursor: pointer; }
+.gate:hover .g-body { fill: var(--soft); }
+.gate.crit .g-body { stroke: var(--crit); stroke-width: 2.2; }
+.gate.sel .g-body { stroke: var(--sel); stroke-width: 2.6; }
+.lbl { font-size: 10px; fill: var(--muted); }
+.gate.crit .lbl { fill: var(--crit); }
+.gate.sel .lbl { fill: var(--sel); font-weight: 600; }
+.ty { font-size: 8px; font-weight: 600; }
+.pin { font-size: 7.5px; fill: var(--muted); }
+.wire { fill: none; stroke: var(--wire); stroke-width: 1.1; }
+.wire.crit { stroke: var(--crit); stroke-width: 2.4; }
+.wire.hot { stroke: var(--sel); stroke-width: 2; }
+.lead { stroke: var(--fg); stroke-width: 1.2; }
+.band { fill: none; stroke: var(--line); stroke-dasharray: 4 3; pointer-events: none; }
+.band-t { font-size: 12px; font-weight: 600; fill: var(--muted); }
+.netlbl { font-size: 9.5px; fill: var(--sel); }
+.timing { font-size: 9px; fill: var(--crit); font-weight: 600; }
+.io { font-size: 11px; font-weight: 600; }
+.tx .dev, .tx .rail { stroke: var(--fg); stroke-width: 1.3; fill: none; }
+.tx .w { font-size: 10px; fill: var(--muted); }
+.tx .p { font-size: 11px; font-weight: 600; }
+.tx circle.b { fill: var(--bg); stroke: var(--fg); stroke-width: 1.2; }
+.tx circle.n { fill: var(--fg); }
+ul { margin: 6px 0 0; padding-left: 20px; max-width: 80ch; }
+li { margin: 2px 0; }
+</style>
+
+<main>
+  <header>
+    <h1>ECE555 neuron netlist</h1>
+    <p class="muted">out = ReLU(x1·w1 + x2·w2 + wb). Drawn from the netlists built by <code>model/neuron.cpp</code>; gate labels and net names are the ones in the code.</p>
+  </header>
+
+  <section>
+    <div class="controls">
+      <label for="s-arch">Architecture<select id="s-arch"><option value="0">Spec datapath (MUL, ADD2, ADD3, ReLU)</option><option value="1">Carry-save count</option></select></label>
+      <label for="s-xor">XOR / XNOR<select id="s-xor"><option value="0">NAND4 (16T)</option><option value="1">CMOS12</option><option value="2">NOR+AOI (10T)</option></select></label>
+      <label for="s-fa">Full adder<select id="s-fa"><option value="0">XOR-based FA</option><option value="1">Mirror FA</option></select></label>
+      <label for="s-relu">ReLU<select id="s-relu"><option value="0">3-bit MUX</option><option value="1">AND gating</option></select></label>
+      <label for="s-size">Sizing<select id="s-size"><option value="unit">Unit (all gates size 1)</option><option value="balanced">Balanced (min delay × area)</option><option value="fastest">Fastest</option></select></label>
+    </div>
+    <div class="summary" id="summary"></div>
+    <p class="tb" id="tb"></p>
+  </section>
+
+  <section>
+    <h2>Gate-level schematic</h2>
+    <div class="zoom">Zoom <button type="button" data-z="fit">Fit</button><button type="button" data-z="1">100%</button><button type="button" data-z="1.5">150%</button></div>
+    <div class="box" id="netbox"><svg id="net" role="img" aria-label="Gate-level schematic of the neuron"></svg></div>
+    <p class="key"><span>Orange</span> is the worst-case path, with arrival times in τ. Click a gate to see its transistors. Boxes are complex gates; the small letters are their pin names.</p>
+  </section>
+
+  <div class="two">
+    <section>
+      <h2>Worst-case path</h2>
+      <div class="box" style="border:0"><table id="path"></table></div>
+    </section>
+    <section>
+      <h2>Selected gate</h2>
+      <div id="detail"></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>All designs</h2>
+    <p class="muted" style="margin-bottom:6px">Sorted by delay × area after balanced sizing. Area is the sum of device widths in W<sub>unit</sub>. Click a row to load it.</p>
+    <div class="box" style="border:0"><table id="rank"></table></div>
+  </section>
+
+  <div class="two">
+    <section>
+      <h2>Carry-save count architecture</h2>
+      <p>Every product and the bias is −1, 0 or +1, stored as a nonzero bit y0 and a negative bit y1, so its value is y0 − 2·y1. That makes the sum</p>
+      <ul>
+        <li><code>sum = (#nonzero) − 2·(#negative)</code></li>
+        <li>Two full adders in parallel count them: <code>#nonzero = nz.sum + 2·nz.carry</code>, <code>#negative = neg.sum + 2·neg.carry</code></li>
+        <li><code>out[1] = nz.carry · !neg.sum · !neg.carry</code> (one NOR3)</li>
+        <li><code>out[0] = nz.sum · !neg.carry · (nz.carry + !neg.sum)</code> (one AOI211)</li>
+      </ul>
+      <p style="margin-top:6px">This replaces both ripple adders and the ReLU mux with one full-adder delay plus one gate. It still contains a multiplier, adders and the activation, but check with your TA that a restructured datapath is allowed (slide 14 calls its block list an example).</p>
+    </section>
+    <section>
+      <h2>Beta sweep (unit sizing)</h2>
+      <div class="box" style="border:0"><table id="beta"></table></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Model</h2>
+    <p class="muted" id="params"></p>
+  </section>
+</main>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const NS = 'http://www.w3.org/2000/svg';
+  const st = { ai: 1, xi: 2, fi: 0, ri: 2, sz: 'balanced', sel: null, zoom: 'fit' };
+  try { const z = localStorage.getItem('neuron-zoom'); if (z) st.zoom = z; } catch (e) {}
+  const find = (ai, xi, fi, ri, sz) => D.designs.find(d => d.ai === ai && d.xi === xi && d.fi === fi && d.ri === ri && d.sizing === sz);
+  const cur = () => find(st.ai, st.xi, st.fi, st.ri, st.sz);
+  const nl = (c, n) => c.nets[n].alias || c.nets[n].name;
+  const blockOf = g => g.label.split('/')[0];
+  const f1 = x => (Math.round(x * 10) / 10).toFixed(1);
+  const fw = w => String(Math.round(w * 100) / 100);
+  const sg = v => (v > 0 ? '+' + v : v < 0 ? '−' + -v : '0');
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  function el(tag, a, parent, text) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (text !== undefined) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+  const val = v => Math.max(0, v.x1 * v.w1 + v.x2 * v.w2 + v.wb);
+
+  /* controls */
+  const sel = id => document.getElementById(id);
+  function syncControls() {
+    sel('s-arch').value = st.ai; sel('s-xor').value = st.xi; sel('s-fa').value = st.fi; sel('s-size').value = st.sz;
+    const r = sel('s-relu');
+    if (st.ai === 1) { r.disabled = true; r.innerHTML = '<option value="2">Built into output gates</option>'; }
+    else { r.disabled = false; r.innerHTML = '<option value="0">3-bit MUX</option><option value="1">AND gating</option>'; r.value = st.ri; }
+  }
+  sel('s-arch').addEventListener('change', e => { st.ai = +e.target.value; st.ri = st.ai === 1 ? 2 : 1; st.sel = null; render(); });
+  sel('s-xor').addEventListener('change', e => { st.xi = +e.target.value; st.sel = null; render(); });
+  sel('s-fa').addEventListener('change', e => { st.fi = +e.target.value; st.sel = null; render(); });
+  sel('s-relu').addEventListener('change', e => { st.ri = +e.target.value; st.sel = null; render(); });
+  sel('s-size').addEventListener('change', e => { st.sz = e.target.value; render(); });
+
+  function renderSummary() {
+    const c = cur();
+    sel('summary').innerHTML = `<span>Transistors <b>${c.trans}</b></span><span>Area <b>${Math.round(c.area)}</b> W<sub>unit</sub></span>
+      <span>Worst delay <b>${f1(c.worst)} τ</b> (${f1(c.worst / c.fo4)} FO4)</span><span>Worst rise / fall <b>${f1(c.rise)} / ${f1(c.fall)} τ</b></span><span>Gates <b>${c.gates.length}</b></span>`;
+    const a = c.wfixFrom, b = c.wfixTo, ks = ['x1', 'x2', 'w1', 'w2', 'wb'];
+    const hold = ks.filter(k => a[k] === b[k]).map(k => `${k} = ${sg(a[k])}`).join(', ');
+    const step = ks.filter(k => a[k] !== b[k]).map(k => `${k} ${sg(a[k])} → ${sg(b[k])}`).join(', ');
+    sel('tb').innerHTML = `Worst-case testbench vector (weights fixed): hold <b class="mono">${esc(hold)}</b>, step <b class="mono">${esc(step)}</b>, output ${val(a)} → ${val(b)} (${f1(c.wfix)} τ).`;
+  }
+
+  /* schematic */
+  const GW = 64, COLW = 130, PIN = 16;
+  let L = null, wires = [];
+  function layout(c) {
+    const G = c.gates, lvl = G.map(() => 0);
+    G.forEach((g, i) => { g.in.forEach(n => { const d = c.nets[n].drv; if (d >= 0 && blockOf(G[d]) === blockOf(g)) lvl[i] = Math.max(lvl[i], lvl[d] + 1); }); });
+    const ncol = {}; G.forEach((g, i) => { const b = blockOf(g); ncol[b] = Math.max(ncol[b] || 0, lvl[i] + 1); });
+    const bx = {}; let x = 150;
+    c.blocks.forEach(gr => { const n = Math.max(...gr.map(b => ncol[b] || 0)); gr.forEach(b => (bx[b] = x)); x += n * COLW + 56; });
+    const order = ['x1[1]', 'x1[0]', 'w1[1]', 'w1[0]', null, 'x2[1]', 'x2[0]', 'w2[1]', 'w2[0]', null, 'wb[1]', 'wb[0]'];
+    const inY = {}; let y = 64;
+    order.forEach(nm => { if (nm === null) { y += 60; return; } inY[c.inputs.find(i => c.nets[i].name === nm)] = y; y += 30; });
+    const pos = G.map((g, i) => ({ x: bx[blockOf(g)] + lvl[i] * COLW, y: 0, h: Math.max(1, g.in.length) * PIN + 8 }));
+    const outY = id => { const d = c.nets[id].drv; return d >= 0 ? pos[d].y + pos[d].h / 2 : inY[id]; };
+    [...new Set(pos.map(p => p.x))].sort((a, b) => a - b).forEach(cx => {
+      const ids = G.map((g, i) => i).filter(i => pos[i].x === cx);
+      ids.forEach(i => { const ys = G[i].in.filter(n => n > 1).map(outY); pos[i].want = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 100; });
+      ids.sort((a, b) => pos[a].want - pos[b].want);
+      let bottom = -1e9;
+      ids.forEach(i => { const top = Math.max(pos[i].want - pos[i].h / 2, bottom + 30, 50); pos[i].y = top; bottom = top + pos[i].h; });
+    });
+    const maxY = Math.max(...pos.map(p => p.y + p.h), ...Object.values(inY));
+    return { pos, inY, outX: x + 10, W: x + 140, H: maxY + 50, bx, ncol };
+  }
+  function shape(ge, g, p) {
+    const h = p.h, cy = h / 2, t = g.type; let body;
+    if (t === 'INV') { el('path', { class: 'g-body', d: `M8 ${cy - 11}L8 ${cy + 11}L38 ${cy}Z` }, ge); body = 38; }
+    else if (t === 'NAND2') { el('path', { class: 'g-body', d: `M6 0H22A${cy} ${cy} 0 0 1 22 ${h}H6Z` }, ge); body = 22 + cy; }
+    else if (t === 'NOR2') { el('path', { class: 'g-body', d: `M4 0Q16 ${cy} 4 ${h}Q30 ${h} 44 ${cy}Q30 0 4 0Z` }, ge); body = 44; }
+    else {
+      el('rect', { class: 'g-body', x: 4, y: 0, width: 42, height: h }, ge); body = 46;
+      el('text', { class: 'ty', x: 27, y: cy + 3, 'text-anchor': 'middle' }, ge, t);
+      g.pins.forEach((pn, i) => el('text', { class: 'pin', x: 7, y: 14.5 + i * PIN }, ge, pn));
+    }
+    el('circle', { class: 'g-body', cx: body + 3.5, cy, r: 3.5 }, ge);
+    el('line', { class: 'lead', x1: body + 7, y1: cy, x2: GW, y2: cy }, ge);
+    g.in.forEach((_, i) => {
+      const py = 12 + i * PIN;
+      const x2 = t === 'NOR2' ? 4 + 10.8 * (1 - Math.pow((py - cy) / cy, 2)) : t === 'INV' ? 8 : t === 'NAND2' ? 6 : 4;
+      el('line', { class: 'lead', x1: -8, y1: py, x2, y2: py }, ge);
+    });
+  }
+  function renderNet() {
+    const c = cur(); L = layout(c);
+    const { pos, inY, outX } = L, svg = sel('net');
+    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${L.W} ${L.H}`);
+    const critG = new Set(), critE = new Set(), arr = {};
+    for (let k = 1; k < c.path.length; k++) { const d = c.nets[c.path[k][0]].drv; critG.add(d); critE.add(c.path[k - 1][0] + '>' + d); arr[c.path[k][0]] = c.path[k][1]; }
+    const lastNet = c.path[c.path.length - 1][0];
+    c.blocks.flat().forEach(b => {
+      const ids = c.gates.map((g, i) => i).filter(i => blockOf(c.gates[i]) === b);
+      if (!ids.length) return;
+      const x0 = L.bx[b] - 26, x1 = L.bx[b] + (L.ncol[b] - 1) * COLW + GW + 22;
+      const y0 = Math.min(...ids.map(i => pos[i].y)) - 36, y1 = Math.max(...ids.map(i => pos[i].y + pos[i].h)) + 24;
+      el('rect', { class: 'band', x: x0, y: y0, width: x1 - x0, height: y1 - y0 }, svg);
+      el('text', { class: 'band-t', x: x0 + 8, y: y0 + 15 }, svg, b);
+    });
+    const wg = el('g', {}, svg); wires = [];
+    const src = n => { const d = c.nets[n].drv; return d >= 0 ? [pos[d].x + GW, pos[d].y + pos[d].h / 2] : [118, inY[n]]; };
+    c.gates.forEach((g, gi) => g.in.forEach((n, k) => {
+      const x2 = pos[gi].x - 8, y2 = pos[gi].y + 12 + k * PIN;
+      if (n <= 1) { el('line', { class: 'lead', x1: x2 - 14, y1: y2, x2, y2 }, svg); el('text', { x: x2 - 17, y: y2 + 3, 'font-size': 8.5, 'text-anchor': 'end', fill: 'var(--muted)' }, svg, n === 0 ? 'GND' : 'VDD'); return; }
+      const [x1, y1] = src(n), dx = Math.max(28, (x2 - x1) * 0.45), isC = critE.has(n + '>' + gi);
+      const p = el('path', { class: 'wire' + (isC ? ' crit' : ''), d: `M${x1} ${y1}C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}` }, isC ? svg : wg);
+      wires.push({ el: p, src: c.nets[n].drv, sink: gi });
+    }));
+    c.outputs.forEach(n => {
+      const [x1, y1] = src(n), isC = n === lastNet;
+      el('path', { class: 'wire' + (isC ? ' crit' : ''), d: `M${x1} ${y1}H${outX}` }, svg);
+      el('text', { class: 'io', x: outX + 6, y: y1 + 4, fill: isC ? 'var(--crit)' : 'var(--fg)' }, svg, c.nets[n].alias);
+    });
+    c.inputs.forEach(n => {
+      const isC = n === c.path[0][0];
+      el('text', { class: 'io', x: 108, y: inY[n] + 4, 'text-anchor': 'end', fill: isC ? 'var(--crit)' : 'var(--fg)' }, svg, c.nets[n].name);
+      el('circle', { cx: 116, cy: inY[n], r: 2.8, fill: isC ? 'var(--crit)' : 'var(--fg)' }, svg);
+    });
+    c.gates.forEach((g, gi) => {
+      const p = pos[gi];
+      const ge = el('g', { class: 'gate' + (critG.has(gi) ? ' crit' : '') + (st.sel === gi ? ' sel' : ''), transform: `translate(${p.x},${p.y})`, tabindex: 0, role: 'button', 'aria-label': g.label }, svg);
+      el('title', {}, ge, `${g.label} → ${nl(c, g.out)}${g.size !== 1 ? ' (size ' + fw(g.size) + ')' : ''}`);
+      el('rect', { x: -8, y: -4, width: GW + 12, height: p.h + 20, fill: 'transparent', 'pointer-events': 'all' }, ge);
+      shape(ge, g, p);
+      el('text', { class: 'lbl', x: 24, y: p.h + 12, 'text-anchor': 'middle' }, ge, g.label.split('/')[1] + (g.size !== 1 ? ' ×' + fw(g.size) : ''));
+      const al = c.nets[g.out].alias;
+      if (al && !c.outputs.includes(g.out)) el('text', { class: 'netlbl', x: GW + 4, y: p.h / 2 - 5 }, ge, al);
+      if (arr[g.out] !== undefined) el('text', { class: 'timing', x: GW + 4, y: p.h / 2 + 12 }, ge, 't=' + f1(arr[g.out]));
+      ge.addEventListener('click', () => pick(gi));
+      ge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(gi); } });
+      ge.addEventListener('mouseenter', () => light(gi));
+      ge.addEventListener('mouseleave', () => light(null));
+    });
+    zoom(); light(null);
+  }
+  function light(gi) { wires.forEach(w => w.el.classList.toggle('hot', (gi !== null && (w.src === gi || w.sink === gi)) || (st.sel !== null && (w.src === st.sel || w.sink === st.sel)))); }
+  function zoom() {
+    const svg = sel('net'), box = sel('netbox');
+    let z = st.zoom === 'fit' ? Math.min(1, (box.clientWidth - 2) / L.W) : parseFloat(st.zoom);
+    if (!(z > 0)) z = 1;
+    svg.setAttribute('width', Math.round(L.W * z)); svg.setAttribute('height', Math.round(L.H * z));
+    document.querySelectorAll('.zoom button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.z === st.zoom)));
+  }
+  document.querySelectorAll('.zoom button').forEach(b => b.addEventListener('click', () => { st.zoom = b.dataset.z; try { localStorage.setItem('neuron-zoom', st.zoom); } catch (e) {} zoom(); }));
+  window.addEventListener('resize', () => { if (L && st.zoom === 'fit') zoom(); });
+
+  /* transistor view */
+  function spL(n) {
+    if (n.k === 'L') return { n, w: 92, h: 52, tx: 64 };
+    const k = n.ch.map(spL);
+    if (n.k === 'S') { const l = Math.max(...k.map(q => q.tx)), r = Math.max(...k.map(q => q.w - q.tx)); return { n, k, w: l + r, h: k.reduce((a, q) => a + q.h, 0), tx: l }; }
+    let x = 0; const txs = k.map(q => { const t = x + q.tx; x += q.w + 12; return t; });
+    return { n, k, w: x - 12, h: Math.max(...k.map(q => q.h)) + 20, tx: (txs[0] + txs[txs.length - 1]) / 2 };
+  }
+  function spD(svg, o, x, y, pmos, pins) {
+    if (o.n.k === 'L') {
+      const cx = x + o.tx;
+      el('line', { class: 'dev', x1: cx, y1: y, x2: cx, y2: y + 52 }, svg);
+      el('line', { class: 'dev', x1: cx - 2, y1: y + 13, x2: cx - 2, y2: y + 39, 'stroke-width': 2.4 }, svg);
+      el('line', { class: 'dev', x1: cx - 9, y1: y + 15, x2: cx - 9, y2: y + 37 }, svg);
+      if (pmos) { el('circle', { class: 'b', cx: cx - 12.5, cy: y + 26, r: 3.3 }, svg); el('line', { class: 'dev', x1: cx - 16, y1: y + 26, x2: cx - 30, y2: y + 26 }, svg); }
+      else el('line', { class: 'dev', x1: cx - 9, y1: y + 26, x2: cx - 30, y2: y + 26 }, svg);
+      el('text', { class: 'p', x: cx - 34, y: y + 24, 'text-anchor': 'end' }, svg, pins[o.n.pin]);
+      el('text', { class: 'w', x: cx - 34, y: y + 37, 'text-anchor': 'end' }, svg, 'W ' + fw(o.n.w));
+      return;
+    }
+    if (o.n.k === 'S') { let yy = y; o.k.forEach(q => { spD(svg, q, x + o.tx - q.tx, yy, pmos, pins); yy += q.h; }); return; }
+    const top = y + 10, bot = y + o.h - 10, xs = []; let xx = x;
+    o.k.forEach(q => { xs.push(xx + q.tx); spD(svg, q, xx, top, pmos, pins); if (q.h < o.h - 20) el('line', { class: 'rail', x1: xx + q.tx, y1: top + q.h, x2: xx + q.tx, y2: bot }, svg); xx += q.w + 12; });
+    el('line', { class: 'rail', x1: xs[0], y1: top, x2: xs[xs.length - 1], y2: top }, svg);
+    el('line', { class: 'rail', x1: xs[0], y1: bot, x2: xs[xs.length - 1], y2: bot }, svg);
+    el('line', { class: 'rail', x1: x + o.tx, y1: y, x2: x + o.tx, y2: top }, svg);
+    el('line', { class: 'rail', x1: x + o.tx, y1: bot, x2: x + o.tx, y2: y + o.h }, svg);
+  }
+  const pinW = (n, a) => { if (n.k === 'L') a[n.pin] = (a[n.pin] || 0) + n.w; else n.ch.forEach(q => pinW(q, a)); return a; };
+  function pick(gi) { st.sel = st.sel === gi ? null : gi; renderNet(); renderDetail(); renderPath(); }
+  function renderDetail() {
+    const c = cur(), box = sel('detail');
+    if (st.sel === null) { box.innerHTML = '<p class="muted">Click a gate in the schematic or a row in the path table.</p>'; return; }
+    const g = c.gates[st.sel], wn = pinW(g.pdn, {}), wp = pinW(g.pun, {});
+    box.innerHTML = `<p><b class="mono">${esc(g.label)}</b> &nbsp;${g.type}, ${g.ndev} transistors, size ${fw(g.size)}, drives <code>${esc(nl(c, g.out))}</code> (load ${f1(c.nets[g.out].C)} C<sub>unit</sub>)</p>
+      <table style="margin:8px 0"><thead><tr><th>Pin</th><th>Net</th><th class="n">NMOS W</th><th class="n">PMOS W</th></tr></thead><tbody>
+      ${g.pins.map((pn, i) => `<tr><td class="c">${pn}</td><td class="c">${esc(nl(c, g.in[i]))}</td><td class="n">${fw(wn[i] || 0)}</td><td class="n">${fw(wp[i] || 0)}</td></tr>`).join('')}</tbody></table>
+      <div class="box tx"><svg id="txsvg" role="img" aria-label="Transistors of ${esc(g.label)}"></svg></div>`;
+    const svg = sel('txsvg'), Lp = spL(g.pun), Ln = spL(g.pdn);
+    const cx = Math.max(Lp.tx, Ln.tx) + 20, right = Math.max(Lp.w - Lp.tx, Ln.w - Ln.tx);
+    let y = 26;
+    el('text', { x: cx, y: 14, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600 }, svg, 'VDD');
+    el('line', { class: 'rail', x1: cx - 18, y1: 20, x2: cx + 18, y2: 20 }, svg);
+    el('line', { class: 'rail', x1: cx, y1: 20, x2: cx, y2: y }, svg);
+    spD(svg, Lp, cx - Lp.tx, y, true, g.pins); y += Lp.h;
+    el('line', { class: 'rail', x1: cx, y1: y, x2: cx, y2: y + 20 }, svg);
+    const oy = y + 10;
+    el('circle', { class: 'n', cx, cy: oy, r: 3.3 }, svg);
+    el('line', { class: 'rail', x1: cx, y1: oy, x2: cx + right + 16, y2: oy }, svg);
+    el('text', { x: cx + right + 20, y: oy + 4, 'font-size': 11, 'font-weight': 600 }, svg, nl(c, g.out));
+    y += 20; spD(svg, Ln, cx - Ln.tx, y, false, g.pins); y += Ln.h;
+    el('line', { class: 'rail', x1: cx, y1: y, x2: cx, y2: y + 8 }, svg);
+    [18, 11, 4].forEach((hw, i) => el('line', { class: 'rail', x1: cx - hw, y1: y + 8 + i * 5, x2: cx + hw, y2: y + 8 + i * 5 }, svg));
+    const W = cx + right + 30 + 7 * nl(c, g.out).length, H = y + 26;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
+  }
+
+  function renderPath() {
+    const c = cur();
+    const rows = c.path.map(([n, t], k) => {
+      const d = c.nets[n].drv;
+      return `<tr${d >= 0 ? ` class="pick${d === st.sel ? ' cur' : ''}" tabindex="0" data-g="${d}"` : ''}><td class="n">${k}</td><td class="c">${esc(d >= 0 ? c.gates[d].label : c.nets[n].name)}</td><td class="c">${esc(d >= 0 ? c.nets[n].alias : '')}</td><td class="n">${k ? '+' + f1(t - c.path[k - 1][1]) : ''}</td><td class="n">${f1(t)}</td></tr>`;
+    }).join('');
+    const t = sel('path');
+    t.innerHTML = `<thead><tr><th class="n">#</th><th>Gate</th><th>Net</th><th class="n">Stage τ</th><th class="n">Arrival τ</th></tr></thead><tbody>${rows}</tbody>`;
+    t.querySelectorAll('tr[data-g]').forEach(r => { r.addEventListener('click', () => pick(+r.dataset.g)); r.addEventListener('keydown', e => { if (e.key === 'Enter') pick(+r.dataset.g); }); });
+  }
+  function renderRank() {
+    const keys = D.designs.filter(d => d.sizing === 'unit');
+    const row = u => {
+      const b = find(u.ai, u.xi, u.fi, u.ri, 'balanced'), f = find(u.ai, u.xi, u.fi, u.ri, 'fastest');
+      return { u, b, f };
+    };
+    const rows = keys.map(row).sort((p, q) => p.b.worst * p.b.area - q.b.worst * q.b.area);
+    const isCur = r => r.u.ai === st.ai && r.u.xi === st.xi && r.u.fi === st.fi && r.u.ri === st.ri;
+    sel('rank').innerHTML = `<thead><tr><th>Architecture</th><th>XOR</th><th>Full adder</th><th>ReLU</th><th class="n">Transistors</th><th class="n">Area</th><th class="n">T unit</th><th class="n">T balanced</th><th class="n">T fastest</th><th class="n">Area fastest</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="pick${isCur(r) ? ' cur' : ''}" tabindex="0" data-k="${r.u.ai},${r.u.xi},${r.u.fi},${r.u.ri}"><td>${r.u.arch}</td><td>${r.u.xor}</td><td>${r.u.fa}</td><td>${r.u.relu}</td>
+      <td class="n">${r.u.trans}</td><td class="n">${Math.round(r.u.area)}</td><td class="n">${f1(r.u.worst)}</td><td class="n">${f1(r.b.worst)}</td><td class="n">${f1(r.f.worst)}</td><td class="n">${Math.round(r.f.area)}</td></tr>`).join('')}</tbody>`;
+    sel('rank').querySelectorAll('tr[data-k]').forEach(r => {
+      const go = () => { [st.ai, st.xi, st.fi, st.ri] = r.dataset.k.split(',').map(Number); st.sel = null; render(); window.scrollTo({ top: 0 }); };
+      r.addEventListener('click', go); r.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    });
+  }
+  function renderStatic() {
+    sel('beta').innerHTML = `<thead><tr><th class="n">β</th><th class="n">Spec T τ</th><th class="n">Spec area</th><th class="n">Carry-save T τ</th><th class="n">Carry-save area</th></tr></thead><tbody>
+      ${D.beta.map(b => `<tr><td class="n">${b.beta.toFixed(2)}</td><td class="n">${f1(b.spec)}</td><td class="n">${Math.round(b.specA)}</td><td class="n">${f1(b.csa)}</td><td class="n">${Math.round(b.csaA)}</td></tr>`).join('')}</tbody>`;
+    const p = D.params;
+    sel('params').innerHTML = `β = ${p.beta}, μ<sub>n</sub>/μ<sub>p</sub> = ${p.mu}, diffusion/gate cap = ${p.gamma}, output load ${p.cload} C<sub>unit</sub>, inputs driven by a unit inverter. Times are in τ (one minimum NMOS driving one unit of gate cap); 1 FO4 = ${f1(D.designs[0].fo4)} τ.
+      Each gate's pull-down is a series/parallel tree with its dual as the pull-up; delay = ln2·R·C, event driven, over all 30,244 input transitions that change the output. Sizing: the critical-path gate with the best delay gain per added width is upsized ×1.25, repeated until it stops helping.
+      Stack-node capacitance, input slew and wiring are ignored, so use these numbers to rank designs and pick test vectors, then confirm in Spectre.`;
+  }
+  function render() { syncControls(); renderSummary(); renderNet(); renderDetail(); renderPath(); renderRank(); }
+  renderStatic(); render();
+})();
+</script>

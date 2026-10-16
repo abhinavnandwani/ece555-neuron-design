@@ -1,0 +1,57 @@
+Params: beta=1.50 mu=2.00 gamma=1.00 cload=6.0 rdrv=1.0   1 FO4 = 10.1 tau
+Area = sum of device widths in Wunit (proxy for layout area). 30244 output-changing transitions per design.
+
+=== Functional check, 243 valid combinations ===
+Spec datapath     multiplier=screenshot errors=18
+    e.g. x1=+0 x2=+0 w1=+0 w2=-1 wb=+1  expected 1
+    e.g. x1=+0 x2=+0 w1=+1 w2=-1 wb=+1  expected 1
+    e.g. x1=+0 x2=+0 w1=-1 w2=+0 wb=+1  expected 1
+    e.g. x1=+0 x2=+0 w1=-1 w2=+1 wb=+1  expected 1
+Spec datapath     multiplier=fixed      errors=0
+Carry-save count  multiplier=fixed      errors=0
+
+=== All designs (unit sizing, then after the sizing optimizer) ===
+Architecture      XOR            Full adder    ReLU                   Trans |   Area       T   FO4 |   Area       T   FO4 |   Area       T   FO4
+                                                                            | unit                 | balanced (min T*A)   | fastest             
+Carry-save count  NOR+AOI (10T)  XOR-based FA  built into output gates   122 |    252   103.5  10.2 |    252   103.5  10.2 |    258   102.4  10.1
+Carry-save count  CMOS12         XOR-based FA  built into output gates   130 |    268    99.9   9.9 |    268    99.9   9.9 |    279    99.0   9.8
+Carry-save count  NOR+AOI (10T)  Mirror FA     built into output gates   106 |    292   108.0  10.7 |    294   104.3  10.3 |    300   103.7  10.3
+Carry-save count  CMOS12         Mirror FA     built into output gates   110 |    301   107.8  10.7 |    303   104.0  10.3 |    309   103.4  10.2
+Carry-save count  NAND4 (16T)    XOR-based FA  built into output gates   158 |    298   108.0  10.7 |    306   103.7  10.3 |    314   102.1  10.1
+Carry-save count  NAND4 (16T)    Mirror FA     built into output gates   118 |    315   114.8  11.4 |    317   111.1  11.0 |    323   110.5  10.9
+Spec datapath     NOR+AOI (10T)  XOR-based FA  AND gating               178 |    356   161.2  15.9 |    356   161.2  15.9 |    389   156.3  15.5
+Spec datapath     CMOS12         XOR-based FA  AND gating               188 |    377   154.8  15.3 |    381   151.0  14.9 |    397   148.4  14.7
+Spec datapath     NOR+AOI (10T)  Mirror FA     AND gating               178 |    426   172.0  17.0 |    430   162.5  16.1 |    430   162.5  16.1
+Spec datapath     NAND4 (16T)    XOR-based FA  AND gating               244 |    433   175.7  17.4 |    448   166.5  16.5 |    491   161.1  15.9
+Spec datapath     CMOS12         Mirror FA     AND gating               186 |    443   176.3  17.4 |    447   167.3  16.6 |    448   167.1  16.5
+Spec datapath     NOR+AOI (10T)  XOR-based FA  3-bit MUX                198 |    405   193.7  19.2 |    407   183.8  18.2 |    407   183.8  18.2
+Spec datapath     CMOS12         XOR-based FA  3-bit MUX                208 |    426   187.4  18.5 |    435   176.8  17.5 |    459   171.0  16.9
+Spec datapath     NAND4 (16T)    Mirror FA     AND gating               226 |    485   190.6  18.9 |    493   180.5  17.9 |    507   177.9  17.6
+Spec datapath     NOR+AOI (10T)  Mirror FA     3-bit MUX                200 |    478   207.4  20.5 |    491   189.7  18.8 |    504   188.1  18.6
+Spec datapath     NAND4 (16T)    XOR-based FA  3-bit MUX                264 |    482   211.1  20.9 |    509   189.2  18.7 |    550   182.8  18.1
+Spec datapath     CMOS12         Mirror FA     3-bit MUX                208 |    494   211.6  20.9 |    506   197.0  19.5 |    554   188.6  18.7
+Spec datapath     NAND4 (16T)    Mirror FA     3-bit MUX                248 |    536   226.0  22.4 |    546   207.0  20.5 |    546   207.0  20.5
+
+Best Spec datapath: NOR+AOI (10T) / XOR-based FA / AND gating
+  worst-case vector (weights fixed): [x1=+0 x2=+1 w1=+0 w2=-1 wb=+1] -> [x1=+0 x2=-1 w1=+0 w2=-1 wb=+1]  161.2 tau
+  critical path (unit sizing): x2[1] MUL2/NAND2#6 MUL2/OAI21#7 MUL2/NOR2#8 ADD2/NOR2#14 ADD2/AOI21#15 ADD2/NOR2#16 ADD2/AOI21#17 ADD3/NOR2#27 ADD3/AOI21#28 ADD3/NAND2#31 ADD3/NAND2#33 ADD3/NOR2#36 ADD3/AOI21#37 RELU/NOR2#41
+  sizing curve (area, T): (356, 161.2) (360, 160.0) (361, 159.5) (363, 159.1) (365, 158.9) (367, 158.7) (369, 158.5) (373, 158.0) (377, 157.6) (379, 157.4) (381, 157.1) (383, 156.9) (387, 156.5) (389, 156.3) ... (389, 156.3)
+
+Best Carry-save count: NOR+AOI (10T) / XOR-based FA / built into output gates
+  worst-case vector (weights fixed): [x1=+0 x2=-1 w1=+0 w2=-1 wb=+0] -> [x1=+0 x2=+1 w1=+0 w2=-1 wb=+0]  103.5 tau
+  critical path (unit sizing): x2[1] MUL2/NAND2#6 MUL2/OAI21#7 MUL2/NOR2#8 CNT/NOR2#17 CNT/AOI21#18 CNT/NOR2#19 CNT/AOI21#20 OUT/AOI211#27
+  sizing curve (area, T): (252, 103.5) (255, 103.0) (258, 102.4) ... (258, 102.4)
+
+=== Beta sweep, unit sizing ===
+  beta      Spec datapath   Carry-save count
+  1.00        157.3 tau  283A        107.4 tau  200A
+  1.25        157.7 tau  320A        104.3 tau  226A
+  1.50        161.2 tau  356A        103.5 tau  252A
+  1.75        166.3 tau  392A        104.0 tau  277A
+  2.00        172.6 tau  429A        105.4 tau  303A
+  2.25        179.6 tau  466A        108.5 tau  329A
+  2.50        187.1 tau  502A        111.9 tau  354A
+  2.75        194.9 tau  538A        115.7 tau  380A
+  3.00        203.1 tau  575A        119.7 tau  406A
+
+wrote build/netlist.json

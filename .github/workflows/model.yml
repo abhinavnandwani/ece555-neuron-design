@@ -1,0 +1,51 @@
+name: Model and diagram
+
+# Every push and PR recompiles the model, re-runs all experiments (the run fails if any
+# design gets a wrong output) and rebuilds the diagram page. Pushes to main also deploy
+# the page to GitHub Pages, so the live page always matches model/neuron.cpp.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: model-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile, run experiments, build page
+        run: make page
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-report
+          path: |
+            results/report.txt
+            build/site/index.html
+      - name: Upload page for Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
