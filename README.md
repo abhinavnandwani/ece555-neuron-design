@@ -17,3 +17,34 @@ Status last reviewed: **October 16, 2026**. Status reflects evidence committed t
 | MS4 — Final report and demonstration | December 16 | Test the **extracted neuron netlist at VDD = 0.9 V**, documenting inputs, weights, and expected outputs. Demonstrate correct worst-case output; measure worst-case input-to-output delay **T** and report **f = 1/T**. Prepare the report and demonstration, including design/component explanations, transistor-sizing rationale, and final area. | Not documented | The final report, demonstration evidence, extracted-netlist simulation results, and timing/frequency measurements are not present. |
 
 Submit each graded milestone to its corresponding Canvas submission area as **one readable PDF per group**, as required by the project specification.
+
+## Design-space model
+
+[`model/neuron.cpp`](model/neuron.cpp) models the whole neuron at transistor level before anything is drawn in Virtuoso. Every gate is a static CMOS pull-up/pull-down network with real device widths, and an event-driven RC simulator times all 30,244 input transitions that change the output. It checks every design against `ReLU(x1·w1 + x2·w2 + wb)` for all 243 valid input/weight combinations.
+
+It explores:
+
+- **Architecture**: the spec datapath (multiplier → 2-bit adder → 3-bit adder → ReLU), and a carry-save version that counts nonzero and negative products with two parallel full adders and computes ReLU directly from the counts.
+- **Cells**: XOR style (16T NAND, 12T CMOS, 10T NOR+AOI), full adder (XOR-based or mirror), ReLU (3-bit mux or AND gating).
+- **Sizing**: greedy critical-path upsizing, reported at unit, balanced (min delay × area) and fastest points.
+- **Beta**: a global P/N ratio sweep.
+
+Current results are in [`results/report.txt`](results/report.txt). The best carry-save design is about 36% faster and 29% smaller than the best spec datapath. Times are in τ, the RC of one minimum NMOS driving one unit of gate capacitance. The model ignores stack-node capacitance, input slew and wiring, so use it to rank designs and choose test vectors, then confirm in Spectre and on the extracted netlist.
+
+### Run it
+
+```sh
+make page    # compile, run all experiments (~30 s), build the diagram page
+```
+
+This writes `results/report.txt` and `build/site/index.html`. The page is self-contained, so open it in any browser. It shows the gate-level schematic of every design with the worst-case path, the transistor networks and widths of each gate, and the comparison tables. Gate labels and net names on the page match the code.
+
+Model parameters can be overridden, for example after measuring the PMOS/NMOS strength ratio of the PDK in Spectre:
+
+```sh
+./build/neuron --mu 1.8 --beta 1.5 --cload 6
+```
+
+### Live page
+
+The [Model and diagram](.github/workflows/model.yml) workflow reruns everything on each push and pull request, and fails if any design produces a wrong output. On `main` it deploys the page to GitHub Pages, so the published page always matches `model/neuron.cpp`.
