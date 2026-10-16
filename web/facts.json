@@ -1,1 +1,403 @@
-{"sizing": [{"label": "1 fin everywhere", "fins": 106, "T": 61.0}, {"label": "2 fins on multipliers only", "fins": 146, "T": 61.4}, {"label": "2 fins on full adders only", "fins": 158, "T": 63.3}, {"label": "2 fins on output gates only", "fins": 120, "T": 57.2}, {"label": "Stack-compensated, P/N 1.0", "fins": 230, "T": 55.8}, {"label": "Stack-compensated, P/N 1.5", "fins": 308, "T": 60.2}, {"label": "2 fins everywhere", "fins": 212, "T": 51.0}], "env": [{"factor": "Output load", "value": "0.2 fF", "T": 41.2, "note": ""}, {"factor": "Output load", "value": "1 fF (base)", "T": 50.9, "note": ""}, {"factor": "Output load", "value": "5 fF", "T": 99.2, "note": ""}, {"factor": "Output load", "value": "10 fF", "T": 159.0, "note": "rail-margin failures at a 300 ps interval; passes with 1,000 ps settling"}, {"factor": "Corner", "value": "FF", "T": 45.1, "note": ""}, {"factor": "Corner", "value": "SS", "T": 59.0, "note": ""}, {"factor": "Supply", "value": "0.8 V", "T": 57.9, "note": ""}, {"factor": "Supply", "value": "1.0 V", "T": 46.8, "note": ""}, {"factor": "Temperature", "value": "\u221240 \u00b0C", "T": 46.9, "note": ""}, {"factor": "Temperature", "value": "85 \u00b0C", "T": 54.2, "note": ""}, {"factor": "Input edge", "value": "1 ps", "T": 51.2, "note": ""}, {"factor": "Input edge", "value": "20 ps", "T": 52.1, "note": ""}, {"factor": "Input edge", "value": "50 ps", "T": 54.0, "note": ""}, {"factor": "Input skew", "value": "20 ps spread", "T": 54.7, "note": ""}, {"factor": "Input skew", "value": "50 ps spread", "T": 65.2, "note": ""}], "topo": [{"mx": "NOR+AOI 10T", "mf": "fold", "fa": "mirror", "out": "simple", "trans": 122, "T": 58.4}, {"mx": "CMOS 12T", "mf": "direct", "fa": "CMOS 12T", "out": "simple", "trans": 146, "T": 58.5}, {"mx": "NOR+AOI 10T", "mf": "direct", "fa": "CMOS 12T", "out": "simple", "trans": 142, "T": 58.5}, {"mx": "CMOS 12T", "mf": "fold", "fa": "mirror", "out": "simple", "trans": 126, "T": 58.9}, {"mx": "CMOS 12T", "mf": "direct", "fa": "CMOS 12T", "out": "complex", "trans": 130, "T": 59.2}, {"mx": "NOR+AOI 10T", "mf": "direct", "fa": "CMOS 12T", "out": "complex", "trans": 126, "T": 59.2}, {"mx": "CMOS 12T", "mf": "fold", "fa": "NOR+AOI 10T", "out": "complex", "trans": 126, "T": 60.4}, {"mx": "NOR+AOI 10T", "mf": "fold", "fa": "NOR+AOI 10T", "out": "complex", "trans": 122, "T": 60.4}], "topo_count": 48, "cands": [{"label": "Carry-save, mirror adders, 2 fins everywhere", "fins": 212, "T": 50.891, "A": 2.3924, "src": "study", "rec": true}, {"label": "Carry-save, mirror adders, 2 fins on output gates", "fins": 120, "T": 59.724, "A": 2.3924, "src": "study"}, {"label": "Carry-save, mirror adders, 1 fin", "fins": 106, "T": 61.514, "A": 2.3924, "src": "study"}, {"label": "Carry-save, XOR adders, stack-compensated", "fins": 268, "T": 54.345, "A": 3.0689, "src": "study"}, {"label": "Carry-save, CMOS XOR adders, simple output, 2 fins", "fins": 292, "T": 58.524, "A": 3.8475, "src": "study"}, {"label": "Spec datapath (slide 9), 1 fin", "fins": 178, "T": 79.021, "A": 4.3092, "src": "model"}], "fit": [{"case": "spec_xor_min", "design": "spec:aoi:xor", "sizing": "min", "fins": 178, "n": 816, "spectre": 79.0, "model": 75.0, "err": -5.0}, {"case": "spec_xor_stack", "design": "spec:aoi:xor", "sizing": "stack_b15", "fins": 372, "n": 816, "spectre": 93.1, "model": 85.2, "err": -8.5}, {"case": "csa_xor_min", "design": "csa:aoi:xor", "sizing": "min", "fins": 122, "n": 816, "spectre": 60.5, "model": 58.5, "err": -3.3}, {"case": "csa_xor_stack", "design": "csa:aoi:xor", "sizing": "stack_b15", "fins": 268, "n": 816, "spectre": 54.3, "model": 53.1, "err": -2.2}, {"case": "csa_mirror_min", "design": "csa:aoi:mirror", "sizing": "min", "fins": 106, "n": 816, "spectre": 62.1, "model": 58.0, "err": -6.7}, {"case": "csa_mirror_stack", "design": "csa:aoi:mirror", "sizing": "stack_b15", "fins": 308, "n": 816, "spectre": 60.3, "model": 56.7, "err": -6.1}, {"case": "aoi_fold_aoi_complex", "design": "csa:aoi:xor", "sizing": "min", "fins": 122, "n": 103, "spectre": 60.4, "model": 58.5, "err": -3.1}, {"case": "aoi_fold_mirror_complex", "design": "csa:aoi:mirror", "sizing": "min", "fins": 106, "n": 103, "spectre": 62.2, "model": 57.9, "err": -7.0}, {"case": "cmos_fold_cmos_complex", "design": "csa:cmos:xor", "sizing": "min", "fins": 130, "n": 103, "spectre": 61.2, "model": 57.4, "err": -6.3}, {"case": "cmos_fold_mirror_complex", "design": "csa:cmos:mirror", "sizing": "min", "fins": 110, "n": 103, "spectre": 62.2, "model": 58.8, "err": -5.5}, {"case": "nand_fold_nand_complex", "design": "csa:nand:xor", "sizing": "min", "fins": 158, "n": 103, "spectre": 68.7, "model": 64.2, "err": -6.6}, {"case": "nand_fold_mirror_complex", "design": "csa:nand:mirror", "sizing": "min", "fins": 118, "n": 103, "spectre": 69.2, "model": 66.2, "err": -4.3}, {"case": "size2_all2_b15", "design": "csa:aoi:mirror", "sizing": "all2", "fins": 212, "n": 103, "spectre": 51.0, "model": 51.8, "err": 1.6}, {"case": "size2_mul2_b15", "design": "csa:aoi:mirror", "sizing": "mul2", "fins": 146, "n": 103, "spectre": 61.4, "model": 57.4, "err": -6.5}, {"case": "size2_fa2_b15", "design": "csa:aoi:mirror", "sizing": "fa2", "fins": 158, "n": 103, "spectre": 63.3, "model": 60.1, "err": -5.0}, {"case": "size2_out2_b15", "design": "csa:aoi:mirror", "sizing": "out2", "fins": 120, "n": 103, "spectre": 57.2, "model": 52.3, "err": -8.5}, {"case": "size2_stack_b10", "design": "csa:aoi:mirror", "sizing": "stack_b10", "fins": 230, "n": 103, "spectre": 55.8, "model": 51.0, "err": -8.5}, {"case": "size2_stack_b15", "design": "csa:aoi:mirror", "sizing": "stack_b15", "fins": 308, "n": 103, "spectre": 60.2, "model": 55.4, "err": -8.0}, {"case": "full0", "design": "csa:aoi:mirror", "sizing": "all2", "fins": 212, "n": 816, "spectre": 50.9, "model": 51.8, "err": 1.9}, {"case": "full2", "design": "csa:aoi:mirror", "sizing": "min", "fins": 106, "n": 816, "spectre": 61.5, "model": 58.0, "err": -5.7}], "fit_rank": ["173", "190"]}
+{
+  "sizing": [
+    {
+      "label": "1 fin everywhere",
+      "fins": 106,
+      "T": 61.0
+    },
+    {
+      "label": "2 fins on multipliers only",
+      "fins": 146,
+      "T": 61.4
+    },
+    {
+      "label": "2 fins on full adders only",
+      "fins": 158,
+      "T": 63.3
+    },
+    {
+      "label": "2 fins on output gates only",
+      "fins": 120,
+      "T": 57.2
+    },
+    {
+      "label": "Stack-compensated, P/N 1.0",
+      "fins": 230,
+      "T": 55.8
+    },
+    {
+      "label": "Stack-compensated, P/N 1.5",
+      "fins": 308,
+      "T": 60.2
+    },
+    {
+      "label": "2 fins everywhere",
+      "fins": 212,
+      "T": 51.0
+    }
+  ],
+  "env": [
+    {
+      "factor": "Output load",
+      "value": "0.2 fF",
+      "T": 41.2,
+      "note": ""
+    },
+    {
+      "factor": "Output load",
+      "value": "1 fF (base)",
+      "T": 50.9,
+      "note": ""
+    },
+    {
+      "factor": "Output load",
+      "value": "5 fF",
+      "T": 99.2,
+      "note": ""
+    },
+    {
+      "factor": "Output load",
+      "value": "10 fF",
+      "T": 159.0,
+      "note": "rail-margin failures at a 300 ps interval; passes with 1,000 ps settling"
+    },
+    {
+      "factor": "Corner",
+      "value": "FF",
+      "T": 45.1,
+      "note": ""
+    },
+    {
+      "factor": "Corner",
+      "value": "SS",
+      "T": 59.0,
+      "note": ""
+    },
+    {
+      "factor": "Supply",
+      "value": "0.8 V",
+      "T": 57.9,
+      "note": ""
+    },
+    {
+      "factor": "Supply",
+      "value": "1.0 V",
+      "T": 46.8,
+      "note": ""
+    },
+    {
+      "factor": "Temperature",
+      "value": "−40 °C",
+      "T": 46.9,
+      "note": ""
+    },
+    {
+      "factor": "Temperature",
+      "value": "85 °C",
+      "T": 54.2,
+      "note": ""
+    },
+    {
+      "factor": "Input edge",
+      "value": "1 ps",
+      "T": 51.2,
+      "note": ""
+    },
+    {
+      "factor": "Input edge",
+      "value": "20 ps",
+      "T": 52.1,
+      "note": ""
+    },
+    {
+      "factor": "Input edge",
+      "value": "50 ps",
+      "T": 54.0,
+      "note": ""
+    },
+    {
+      "factor": "Input skew",
+      "value": "20 ps spread",
+      "T": 54.7,
+      "note": ""
+    },
+    {
+      "factor": "Input skew",
+      "value": "50 ps spread",
+      "T": 65.2,
+      "note": ""
+    }
+  ],
+  "topo": [
+    {
+      "mx": "NOR+AOI 10T",
+      "mf": "fold",
+      "fa": "mirror",
+      "out": "simple",
+      "trans": 122,
+      "T": 58.4
+    },
+    {
+      "mx": "CMOS 12T",
+      "mf": "direct",
+      "fa": "CMOS 12T",
+      "out": "simple",
+      "trans": 146,
+      "T": 58.5
+    },
+    {
+      "mx": "NOR+AOI 10T",
+      "mf": "direct",
+      "fa": "CMOS 12T",
+      "out": "simple",
+      "trans": 142,
+      "T": 58.5
+    },
+    {
+      "mx": "CMOS 12T",
+      "mf": "fold",
+      "fa": "mirror",
+      "out": "simple",
+      "trans": 126,
+      "T": 58.9
+    },
+    {
+      "mx": "CMOS 12T",
+      "mf": "direct",
+      "fa": "CMOS 12T",
+      "out": "complex",
+      "trans": 130,
+      "T": 59.2
+    },
+    {
+      "mx": "NOR+AOI 10T",
+      "mf": "direct",
+      "fa": "CMOS 12T",
+      "out": "complex",
+      "trans": 126,
+      "T": 59.2
+    },
+    {
+      "mx": "CMOS 12T",
+      "mf": "fold",
+      "fa": "NOR+AOI 10T",
+      "out": "complex",
+      "trans": 126,
+      "T": 60.4
+    },
+    {
+      "mx": "NOR+AOI 10T",
+      "mf": "fold",
+      "fa": "NOR+AOI 10T",
+      "out": "complex",
+      "trans": 122,
+      "T": 60.4
+    }
+  ],
+  "fit": [
+    {
+      "case": "spec_xor_min",
+      "design": "spec:aoi:xor",
+      "sizing": "min",
+      "fins": 178,
+      "n": 816,
+      "spectre": 79.0,
+      "model": 75.0,
+      "err": -5.0
+    },
+    {
+      "case": "spec_xor_stack",
+      "design": "spec:aoi:xor",
+      "sizing": "stack_b15",
+      "fins": 372,
+      "n": 816,
+      "spectre": 93.1,
+      "model": 85.2,
+      "err": -8.5
+    },
+    {
+      "case": "csa_xor_min",
+      "design": "csa:aoi:xor",
+      "sizing": "min",
+      "fins": 122,
+      "n": 816,
+      "spectre": 60.5,
+      "model": 58.5,
+      "err": -3.3
+    },
+    {
+      "case": "csa_xor_stack",
+      "design": "csa:aoi:xor",
+      "sizing": "stack_b15",
+      "fins": 268,
+      "n": 816,
+      "spectre": 54.3,
+      "model": 53.1,
+      "err": -2.2
+    },
+    {
+      "case": "csa_mirror_min",
+      "design": "csa:aoi:mirror",
+      "sizing": "min",
+      "fins": 106,
+      "n": 816,
+      "spectre": 62.1,
+      "model": 58.0,
+      "err": -6.7
+    },
+    {
+      "case": "csa_mirror_stack",
+      "design": "csa:aoi:mirror",
+      "sizing": "stack_b15",
+      "fins": 308,
+      "n": 816,
+      "spectre": 60.3,
+      "model": 56.7,
+      "err": -6.1
+    },
+    {
+      "case": "aoi_fold_aoi_complex",
+      "design": "csa:aoi:xor",
+      "sizing": "min",
+      "fins": 122,
+      "n": 103,
+      "spectre": 60.4,
+      "model": 58.5,
+      "err": -3.1
+    },
+    {
+      "case": "aoi_fold_mirror_complex",
+      "design": "csa:aoi:mirror",
+      "sizing": "min",
+      "fins": 106,
+      "n": 103,
+      "spectre": 62.2,
+      "model": 57.9,
+      "err": -7.0
+    },
+    {
+      "case": "cmos_fold_cmos_complex",
+      "design": "csa:cmos:xor",
+      "sizing": "min",
+      "fins": 130,
+      "n": 103,
+      "spectre": 61.2,
+      "model": 57.4,
+      "err": -6.3
+    },
+    {
+      "case": "cmos_fold_mirror_complex",
+      "design": "csa:cmos:mirror",
+      "sizing": "min",
+      "fins": 110,
+      "n": 103,
+      "spectre": 62.2,
+      "model": 58.8,
+      "err": -5.5
+    },
+    {
+      "case": "nand_fold_nand_complex",
+      "design": "csa:nand:xor",
+      "sizing": "min",
+      "fins": 158,
+      "n": 103,
+      "spectre": 68.7,
+      "model": 64.2,
+      "err": -6.6
+    },
+    {
+      "case": "nand_fold_mirror_complex",
+      "design": "csa:nand:mirror",
+      "sizing": "min",
+      "fins": 118,
+      "n": 103,
+      "spectre": 69.2,
+      "model": 66.2,
+      "err": -4.3
+    },
+    {
+      "case": "size2_all2_b15",
+      "design": "csa:aoi:mirror",
+      "sizing": "all2",
+      "fins": 212,
+      "n": 103,
+      "spectre": 51.0,
+      "model": 51.8,
+      "err": 1.6
+    },
+    {
+      "case": "size2_mul2_b15",
+      "design": "csa:aoi:mirror",
+      "sizing": "mul2",
+      "fins": 146,
+      "n": 103,
+      "spectre": 61.4,
+      "model": 57.4,
+      "err": -6.5
+    },
+    {
+      "case": "size2_fa2_b15",
+      "design": "csa:aoi:mirror",
+      "sizing": "fa2",
+      "fins": 158,
+      "n": 103,
+      "spectre": 63.3,
+      "model": 60.1,
+      "err": -5.0
+    },
+    {
+      "case": "size2_out2_b15",
+      "design": "csa:aoi:mirror",
+      "sizing": "out2",
+      "fins": 120,
+      "n": 103,
+      "spectre": 57.2,
+      "model": 52.3,
+      "err": -8.5
+    },
+    {
+      "case": "size2_stack_b10",
+      "design": "csa:aoi:mirror",
+      "sizing": "stack_b10",
+      "fins": 230,
+      "n": 103,
+      "spectre": 55.8,
+      "model": 51.0,
+      "err": -8.5
+    },
+    {
+      "case": "size2_stack_b15",
+      "design": "csa:aoi:mirror",
+      "sizing": "stack_b15",
+      "fins": 308,
+      "n": 103,
+      "spectre": 60.2,
+      "model": 55.4,
+      "err": -8.0
+    },
+    {
+      "case": "full0",
+      "design": "csa:aoi:mirror",
+      "sizing": "all2",
+      "fins": 212,
+      "n": 816,
+      "spectre": 50.9,
+      "model": 51.8,
+      "err": 1.9
+    },
+    {
+      "case": "full2",
+      "design": "csa:aoi:mirror",
+      "sizing": "min",
+      "fins": 106,
+      "n": 816,
+      "spectre": 61.5,
+      "model": 58.0,
+      "err": -5.7
+    }
+  ],
+  "fit_rank": [
+    "173",
+    "190"
+  ]
+}

@@ -38,8 +38,23 @@
 //        ./neuron --validate FILE        check the current parameters against other measurements
 //        --tau --mu --gamma --gint --cload --stack_beta   override parameters
 
-#include <bits/stdc++.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
 #include <future>
+#include <functional>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 using namespace std;
 
 struct Params {

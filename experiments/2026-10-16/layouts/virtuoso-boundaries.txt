@@ -1,0 +1,14 @@
+neuron_aoi_xor_n2_p2 boundary=((0.0 0.0) (6.534 1.2)) width=6.534000000 height=1.200000000 area=7.840800000 um2
+neuron_aoi_xor_n3_p3 boundary=((0.0 0.0) (6.534 1.248)) width=6.534000000 height=1.248000000 area=8.154432000 um2
+neuron_aoi_xor_n4_p1 boundary=((0.0 0.0) (6.534 1.248)) width=6.534000000 height=1.248000000 area=8.154432000 um2
+neuron_aoi_xor_n4_p6 boundary=((0.0 0.0) (6.534 1.392)) width=6.534000000 height=1.392000000 area=9.095328000 um2
+neuron_cmos_xor_n1_p6 boundary=((0.0 0.0) (8.478 1.392)) width=8.478000000 height=1.392000000 area=11.801376000 um2
+neuron_cmos_xor_n2_p2 boundary=((0.0 0.0) (8.478 1.296)) width=8.478000000 height=1.296000000 area=10.987488000 um2
+neuron_cmos_xor_n4_p6 boundary=((0.0 0.0) (8.478 1.488)) width=8.478000000 height=1.488000000 area=12.615264000 um2
+neuron_mirror_n1_p1 boundary=((0.0 0.0) (5.022 1.104)) width=5.022000000 height=1.104000000 area=5.544288000 um2
+neuron_mirror_n1_p6 boundary=((0.0 0.0) (5.022 1.248)) width=5.022000000 height=1.248000000 area=6.267456000 um2
+neuron_mirror_n2_p2 boundary=((0.0 0.0) (5.022 1.152)) width=5.022000000 height=1.152000000 area=5.785344000 um2
+neuron_mirror_n2_p3 boundary=((0.0 0.0) (5.022 1.2)) width=5.022000000 height=1.200000000 area=6.026400000 um2
+neuron_mirror_n3_p3 boundary=((0.0 0.0) (5.022 1.2)) width=5.022000000 height=1.200000000 area=6.026400000 um2
+neuron_mirror_n4_p1 boundary=((0.0 0.0) (5.022 1.2)) width=5.022000000 height=1.200000000 area=6.026400000 um2
+neuron_mirror_n4_p6 boundary=((0.0 0.0) (5.022 1.344)) width=5.022000000 height=1.344000000 area=6.749568000 um2
