@@ -24,14 +24,22 @@ Submit each graded milestone to its corresponding Canvas submission area as **on
 
 ### ASAP7 calibration
 
-The timing model is fitted to 4,896 Spectre transitions ([`calibration/asap7_tt_25c_0p9v.txt`](calibration/asap7_tt_25c_0p9v.txt)). These cover six circuits (spec datapath, carry-save with XOR full adders, carry-save with mirror full adders, each at 1-fin and stack-compensated sizing) in ASAP7 RVT, TT, 25 °C, 0.9 V, L = 20 nm, with 1 fF per output and 1N/2P input drivers.
+The timing model is fitted to 7,764 Spectre transitions in 20 circuits, all ASAP7 RVT, TT, 25 °C, 0.9 V, L = 20 nm, with 1 fF per output and 1N/2P input drivers:
 
-- The PMOS/NMOS resistance ratio is fixed at the measured drain-current ratio, 49.35 µA / 41.19 µA = 1.20.
-- Fitted: τ = 0.59 ps; output and stack-node diffusion of about 1.1 and 1.0 fin gate caps per fin; 1 fF ≈ 20 fin gate caps (about 0.05 fF per fin); and a stack factor that makes a 2-device stack about 1.5× slower, not 2×.
-- Worst-case delay of each of the six circuits is within 10% of Spectre, and the per-transition RMS error is 12.7% ([`calibration/fit.txt`](calibration/fit.txt)). The previous planar assumptions (PMOS 2× weaker, no stack-node capacitance) were off by up to 28% and got the sizing conclusions backwards.
-- The model ranks transitions well (rank correlation 0.84–0.97 on five circuits) but does not reliably pick the single slowest one. **Take testbench worst-case vectors from Spectre, not the model.**
+- [`calibration/asap7_tt_25c_0p9v.txt`](calibration/asap7_tt_25c_0p9v.txt): spec datapath, carry-save with XOR full adders, and carry-save with mirror full adders, each at 1-fin and stack sizing (all 816 output-changing transitions each).
+- [`calibration/asap7_carry_save_sweep.txt`](calibration/asap7_carry_save_sweep.txt): 14 carry-save topologies and sizings from the carry-save sweep (2-fin everywhere, 2 fins on one block, stack at P/N 1.0 and 1.5).
 
-Rerun the fit after new simulations with `./build/neuron --calibrate calibration/asap7_tt_25c_0p9v.txt`.
+The PMOS/NMOS resistance ratio is fixed at the measured drain-current ratio, 49.35 µA / 41.19 µA = 1.20. Fitted: τ = 0.53 ps, output and stack-node diffusion of about 1.4 and 1.1 fin gate caps per fin, 1 fF ≈ 13 fin gate caps, and a stack factor that makes a 2-device stack about 1.8× slower than one device.
+
+How well it fits ([`calibration/fit.txt`](calibration/fit.txt)):
+
+- Every circuit's worst-case delay is within 8.5% of Spectre. The model reads slightly low (by about 5% on average), so treat its delays as optimistic.
+- It orders 173 of 190 circuit pairs the same way Spectre does.
+- Before refitting, the model fitted only to the first file predicted the 14 sweep circuits it had never seen to within 15% (8.8% per-transition RMS), so it extrapolates reasonably.
+- It ranks transitions well but does not reliably pick the single slowest one. **Take testbench worst-case vectors from Spectre, not the model.**
+- It over-credits upsizing only some gates. Spectre shows partial 2-fin sizing helps much less than uniform 2-fin sizing.
+
+Refit after new simulations with `./build/neuron --calibrate calibration/asap7_tt_25c_0p9v.txt,calibration/asap7_carry_save_sweep.txt`, or check a new data file without refitting using `--validate FILE`.
 
 ### What it explores
 
@@ -40,11 +48,18 @@ Rerun the fit after new simulations with `./build/neuron --calibrate calibration
 - **Sizing**: 1, 2 or 3 fins everywhere; stack-compensated; and a whole-fin optimizer that upsizes critical-path gates while delay × area improves.
 - **Area**: a cell-area estimate for one uniform row of 1–3 fins per device, (2·fins + 4) × 27 nm tall at 54 nm poly pitch, so a 3-fin row matches ASAP7's 270 nm 7.5-track cell. Devices wider than the row fold into extra columns. It excludes routing and whitespace, so it ranks designs but is not the graded boundary area.
 
-Current results are in [`results/report.txt`](results/report.txt). In short:
+Current results are in [`results/report.txt`](results/report.txt). Measured in Spectre so far:
 
-- Carry-save beats the spec datapath by about 2.3× in delay × area. With Spectre's measured delays and the model's area estimate, the 1-fin carry-save mirror design is best, at 62.1 ps.
-- Stack compensation **hurts** the spec datapath in Spectre (79.0 → 93.1 ps). With a 1.2 P/N ratio, PMOS needs little upsizing, and extra fins mostly add load.
-- 1-fin rows win on area. Folding a few critical-path gates to 2 fins is the model's best delay × area point; that sizing still needs a Spectre run.
+| Carry-save, 10T multiplier XNOR, mirror full adders, NOR3/AOI211 output | Fins | Worst delay (816 transitions) |
+|---|---|---|
+| 1 fin everywhere | 106 | 61.5 ps |
+| 2 fins everywhere | 212 | 50.9 ps |
+| Previous best (XOR full adders, stack sizing) | 268 | 54.3 ps |
+
+- Carry-save beats the spec datapath by more than 2× in delay × area.
+- Stack compensation hurts the spec datapath (79.0 → 93.1 ps). Uniform 2 fins beats every partial or stack sizing tried.
+- 1 fin vs 2 fins comes down to layout area. 2 fins is 1.21× faster, so it wins on delay × area if its layout is less than 1.21× the area of the 1-fin layout. With row height scaled to fin count, the estimate here is 1.33× (1 fin wins by about 9%). If the row height is fixed at ASAP7's 270 nm anyway, 2 or 3 fins come free.
+- Delay depends strongly on the output load: the 2-fin design measures 41 ps at 0.2 fF, 51 ps at 1 fF, 99 ps at 5 fF and 159 ps at 10 fF. The reported T depends on the testbench load.
 
 ### Run it
 

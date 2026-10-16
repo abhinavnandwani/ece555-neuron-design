@@ -19,9 +19,10 @@
 //   Inputs are driven by 1N/2P inverters like the Spectre testbench; a transition's delay is
 //   last output change minus the earliest input-pin change, matching the measurement.
 //
-// Calibration (calibration/asap7_tt_25c_0p9v.txt): 4,896 Spectre transitions over six circuits
-// (spec/carry-save XOR/carry-save mirror, each at min and stack sizing), ASAP7 RVT, TT, 25 C,
-// 0.9 V, L = 20 nm, 1 fF per output. `--calibrate FILE` refits tau, mu, gamma, gint, cload.
+// Calibration: 7,764 Spectre transitions in 20 circuits, ASAP7 RVT, TT, 25 C, 0.9 V, L = 20 nm,
+// 1 fF per output. calibration/asap7_tt_25c_0p9v.txt (six circuits: spec / carry-save XOR /
+// carry-save mirror at min and stack sizing) and calibration/asap7_carry_save_sweep.txt (14
+// carry-save topologies and sizings). `--calibrate A,B` refits gamma, gint, cload, ks and tau.
 // Pre-layout only: no wires, corners or real layout area.
 //
 // Area
@@ -36,6 +37,7 @@
 // Usage: ./neuron                       report (calibrated defaults)
 //        ./neuron --json out.json        also export netlists for the diagram page
 //        ./neuron --calibrate FILE       refit timing parameters to Spectre measurements
+//        ./neuron --validate FILE        check the current parameters against other measurements
 //        --tau --mu --gamma --gint --cload --stack_beta   override parameters
 
 #include <bits/stdc++.h>
@@ -43,11 +45,11 @@
 using namespace std;
 
 struct Params {
-    // Fit B in calibration/fit.txt: fitted to 4,896 ASAP7 Spectre transitions with mu fixed at
-    // the measured single-bias drain-current ratio, 49.35 uA / 41.19 uA = 1.20.
-    // Per-transition RMS error 12.7%; worst-case delay of each circuit within 10%.
-    double tau = 0.590, mu = 1.2, gamma = 1.135, gint = 1.027, cload = 19.90;
-    double ks = 0.520;                     // series stack: m devices act like R*(1+(m-1)*ks)/m each (1 = linear)
+    // Fit B in calibration/fit.txt: fitted to 7,764 ASAP7 Spectre transitions in 20 circuits (both
+    // calibration files), mu fixed at the measured drain-current ratio 49.35 uA / 41.19 uA = 1.20.
+    // Worst-case delay of every circuit within 8.5% (model reads low); per-transition RMS 14%.
+    double tau = 0.526, mu = 1.2, gamma = 1.409, gint = 1.053, cload = 12.75;
+    double ks = 0.768;                     // series stack: m devices act like R*(1+(m-1)*ks)/m each (1 = linear)
     double stack_beta = 1.5;               // P/N ratio used by the stack sizing scheme
     int drvN = 1, drvP = 2;                // input driver inverter, fins (testbench uses 1N/2P)
     int fmax = 3; double cpp_nm = 54, fin_pitch_nm = 27;  // area estimate: row = (2*fins + 4) fin pitches
@@ -471,49 +473,77 @@ static int funcErrors(Design& d, vector<Vec>* ex = nullptr) {
 }
 
 // ------------------------------------------------------------ calibration
-struct Meas { int design; Vec a, b; double ps; };
-static const char* CAL_DESIGNS[] = {"spec_xor", "csa_xor", "csa_mirror"};
-static Config calConfig(int k) {
-    if (k == 0) return {A_SPEC, X_AOI10, FA_XOR, R_AND, M_FIXED};
-    if (k == 1) return {A_CSA, X_AOI10, FA_XOR, R_NONE, M_FIXED};
-    return {A_CSA, X_AOI10, FA_MIRROR, R_NONE, M_FIXED};
+// A measured circuit ("case"): design key arch:xor:fa (e.g. csa:aoi:mirror) plus a sizing
+//   min | all2 | stack_b10 | stack_b15 | mul2 | fa2 | out2   (2 fins on one block, 1 elsewhere)
+// File lines: [case] key sizing  x1 x2 w1 w2 wb  x1 x2 w1 w2 wb  delay_ps   (values -1/0/1)
+// The original format "spec_xor min ..." is also accepted.
+struct Case { string name, key, sizing; };
+struct Meas { int c; Vec a, b; double ps; };
+struct MeasSet { vector<Case> cases; vector<Meas> m; };
+static Config keyConfig(const string& key) {
+    stringstream ss(key); string a, x, f; getline(ss, a, ':'); getline(ss, x, ':'); getline(ss, f, ':');
+    Config c{a == "spec" ? A_SPEC : A_CSA, x == "nand" ? X_NAND4 : x == "cmos" ? X_CMOS12 : X_AOI10,
+             f == "mirror" ? FA_MIRROR : FA_XOR, a == "spec" ? R_AND : R_NONE, M_FIXED};
+    return c;
 }
-static vector<Meas> loadMeas(const string& path) {
-    ifstream f(path); string line; vector<Meas> m;
+static Design* buildCase(const Case& cs, Params p) {
+    const string& z = cs.sizing;
+    if (z.rfind("stack", 0) == 0) { if (z.size() > 6) p.stack_beta = stod(z.substr(7)) / 10; }
+    Design* d = new Design(keyConfig(cs.key), p, z.rfind("stack", 0) == 0 ? SZ_STACK : SZ_MIN);
+    for (size_t i = 0; i < d->c.gates.size(); i++) {
+        const string& l = d->c.gates[i].label;
+        bool mul = l.rfind("MUL", 0) == 0, out = l.rfind("OUT/", 0) == 0 && l.rfind("OUT/INV", 0) != 0;
+        bool fa = !mul && !out;   // counters plus the inverters that feed the output gates
+        if (z == "all2" || (z == "mul2" && mul) || (z == "fa2" && fa) || (z == "out2" && out)) d->c.setMult(i, 2);
+    }
+    d->c.finalize();
+    return d;
+}
+static MeasSet loadMeas(const string& paths) {   // comma-separated list of files
+    MeasSet S; map<string, int> idx; string line;
+    stringstream pl(paths); string path;
+    while (getline(pl, path, ',')) {
+    ifstream f(path);
     if (!f) { fprintf(stderr, "cannot open %s\n", path.c_str()); exit(1); }
+    map<string, string> old = {{"spec_xor", "spec:aoi:xor"}, {"csa_xor", "csa:aoi:xor"}, {"csa_mirror", "csa:aoi:mirror"}};
     while (getline(f, line)) {
         if (line.empty() || line[0] == '#') continue;
-        istringstream is(line); string arch, sz; int a[5], b[5]; double ps;
-        is >> arch >> sz; for (int& x : a) is >> x; for (int& x : b) is >> x; is >> ps;
-        int k = -1; for (int i = 0; i < 3; i++) if (arch == CAL_DESIGNS[i]) k = i;
-        if (k < 0 || !is) continue;
-        Meas r; r.design = k * 2 + (sz == "stack");
+        istringstream is(line); vector<string> head(3); is >> head[0] >> head[1];
+        Case cs;
+        if (head[1].find(':') != string::npos) { is >> head[2]; cs = {head[0], head[1], head[2]}; }
+        else { if (!old.count(head[0])) continue; cs = {head[0] + "_" + head[1], old[head[0]], head[1] == "stack" ? "stack_b15" : head[1]}; }
+        int a[5], b[5]; double ps; for (int& x : a) is >> x; for (int& x : b) is >> x; is >> ps;
+        if (!is) continue;
+        if (!idx.count(cs.name)) { idx[cs.name] = S.cases.size(); S.cases.push_back(cs); }
+        Meas r; r.c = idx[cs.name];
         r.a = {enc2(a[0]), enc2(a[1]), enc2(a[2]), enc2(a[3]), enc2(a[4])};
         r.b = {enc2(b[0]), enc2(b[1]), enc2(b[2]), enc2(b[3]), enc2(b[4])};
-        r.ps = ps; m.push_back(r);
+        r.ps = ps; S.m.push_back(r);
     }
-    return m;
+    }
+    return S;
 }
-struct CalResult { double rms, worstErr; double modelWorst[6], measWorst[6]; vector<double> pred; };
-static CalResult evaluateCal(const vector<Meas>& M, const Params& p) {
-    CalResult r; r.pred.assign(M.size(), 0);
+struct CalResult { double rms, worstErr; vector<double> modelWorst, measWorst, fins; vector<double> pred; };
+static CalResult evaluateCal(const MeasSet& S, const Params& p) {
+    const auto& M = S.m; int nc = S.cases.size();
+    CalResult r; r.pred.assign(M.size(), 0); r.modelWorst.assign(nc, 0); r.measWorst.assign(nc, 0); r.fins.assign(nc, 0);
     vector<future<void>> fut;
-    for (int d = 0; d < 6; d++) fut.push_back(async(launch::async, [&, d]() {
-        Design des(calConfig(d / 2), p, d % 2 ? SZ_STACK : SZ_MIN);
-        Sim s(des);
-        for (size_t i = 0; i < M.size(); i++) if (M[i].design == d) { int ln; r.pred[i] = s.transition(M[i].a, M[i].b, ln); }
+    for (int d = 0; d < nc; d++) fut.push_back(async(launch::async, [&, d]() {
+        unique_ptr<Design> des(buildCase(S.cases[d], p));
+        r.fins[d] = des->c.fins();
+        Sim s(*des);
+        for (size_t i = 0; i < M.size(); i++) if (M[i].c == d) { int ln; r.pred[i] = s.transition(M[i].a, M[i].b, ln); }
     }));
     for (auto& f : fut) f.get();
-    double se = 0; int n = 0;
-    for (int d = 0; d < 6; d++) r.modelWorst[d] = r.measWorst[d] = 0;
+    double se = 0;
     for (size_t i = 0; i < M.size(); i++) {
-        double e = (r.pred[i] - M[i].ps) / M[i].ps; se += e * e; n++;
-        r.modelWorst[M[i].design] = max(r.modelWorst[M[i].design], r.pred[i]);
-        r.measWorst[M[i].design] = max(r.measWorst[M[i].design], M[i].ps);
+        double e = (r.pred[i] - M[i].ps) / M[i].ps; se += e * e;
+        r.modelWorst[M[i].c] = max(r.modelWorst[M[i].c], r.pred[i]);
+        r.measWorst[M[i].c] = max(r.measWorst[M[i].c], M[i].ps);
     }
-    r.rms = sqrt(se / n);
+    r.rms = sqrt(se / M.size());
     r.worstErr = 0;
-    for (int d = 0; d < 6; d++) r.worstErr = max(r.worstErr, fabs(r.modelWorst[d] / r.measWorst[d] - 1));
+    for (int d = 0; d < nc; d++) r.worstErr = max(r.worstErr, fabs(r.modelWorst[d] / r.measWorst[d] - 1));
     return r;
 }
 // Fitted parameters, in log space: mu, gamma, gint, cload, ks (tau has a closed form).
@@ -522,12 +552,12 @@ static vector<double> getP(Params p, const vector<int>& fr) { vector<double> x; 
 static Params setP(Params p, const vector<int>& fr, const vector<double>& x) { for (size_t k = 0; k < fr.size(); k++) *pref(p, fr[k]) = exp(x[k]); if (p.ks > 1) p.ks = 1; return p; }
 // Objective: per-transition relative RMS error, plus the worst-case delay error of each circuit
 // (the number the grade uses) so the fit cannot trade the slowest cases away.
-static double objective(const vector<Meas>& M, const Params& p) { auto r = evaluateCal(M, p); return r.rms + r.worstErr; }
-static Params calibrate(const vector<Meas>& M, Params p0, const vector<int>& fr) {
+static double objective(const MeasSet& M, const Params& p) { auto r = evaluateCal(M, p); return r.rms + r.worstErr; }
+static Params calibrate(const MeasSet& M, Params p0, const vector<int>& fr) {
     // tau has a closed form given the other parameters (least squares in relative error)
     auto fitTau = [&](Params p) {
         p.tau = 1; auto r = evaluateCal(M, p); double num = 0, den = 0;
-        for (size_t i = 0; i < M.size(); i++) { double q = r.pred[i] / M[i].ps; num += q; den += q * q; }
+        for (size_t i = 0; i < M.m.size(); i++) { double q = r.pred[i] / M.m[i].ps; num += q; den += q * q; }
         p.tau = num / den; return p;
     };
     int n = fr.size(); vector<vector<double>> S; vector<double> F;
@@ -554,30 +584,28 @@ static Params calibrate(const vector<Meas>& M, Params p0, const vector<int>& fr)
     int b = min_element(F.begin(), F.end()) - F.begin();
     return fitTau(setP(p0, fr, S[b]));
 }
-static void calReport(const vector<Meas>& M, const Params& p, const char* title) {
-    auto r = evaluateCal(M, p);
+static void calReport(const MeasSet& S, const Params& p, const char* title) {
+    auto r = evaluateCal(S, p); const auto& M = S.m; int nc = S.cases.size();
     printf("%s\n  tau=%.3f ps  mu=%.3f  gamma=%.3f  gint=%.3f  cload=%.2f C_fin  ks=%.3f\n", title, p.tau, p.mu, p.gamma, p.gint, p.cload, p.ks);
     printf("  per-transition RMS error %.1f%%, worst-case delay error up to %.1f%%\n", 100 * r.rms, 100 * r.worstErr);
-    const char* nm[6] = {"spec_xor_min", "spec_xor_stack", "csa_xor_min", "csa_xor_stack", "csa_mirror_min", "csa_mirror_stack"};
-    printf("  %-18s %10s %10s %7s\n", "circuit", "Spectre", "model", "error");
-    for (int d = 0; d < 6; d++) printf("  %-18s %8.1f ps %8.1f ps %+6.1f%%\n", nm[d], r.measWorst[d], r.modelWorst[d], 100 * (r.modelWorst[d] / r.measWorst[d] - 1));
-    vector<int> om(6), oo(6); iota(om.begin(), om.end(), 0); iota(oo.begin(), oo.end(), 0);
-    sort(om.begin(), om.end(), [&](int a, int b) { return r.measWorst[a] < r.measWorst[b]; });
-    sort(oo.begin(), oo.end(), [&](int a, int b) { return r.modelWorst[a] < r.modelWorst[b]; });
-    // does the model find the slow transitions? rank of Spectre's slowest in the model's order
-    printf("  %-18s %s\n", "circuit", "Spectre's slowest transition ranks #k of 816 in the model; model's slowest ranks #k in Spectre; rank correlation");
-    for (int d = 0; d < 6; d++) {
-        vector<int> idx; for (size_t i = 0; i < M.size(); i++) if (M[i].design == d) idx.push_back(i);
+    printf("  %-26s %-16s %-10s %5s %5s %10s %10s %7s %6s %6s %5s\n", "case", "design", "sizing", "fins", "trans", "Spectre", "model", "error", "S#", "M#", "rho");
+    for (int d = 0; d < nc; d++) {
+        vector<int> idx; for (size_t i = 0; i < M.size(); i++) if (M[i].c == d) idx.push_back(i);
         auto rankBy = [&](auto key) { vector<int> o = idx; sort(o.begin(), o.end(), [&](int x, int y) { return key(x) > key(y); }); vector<double> rk(M.size()); for (size_t k = 0; k < o.size(); k++) rk[o[k]] = k; return rk; };
         auto rm = rankBy([&](int i) { return r.pred[i]; }), rs = rankBy([&](int i) { return M[i].ps; });
         int sw = *max_element(idx.begin(), idx.end(), [&](int x, int y) { return M[x].ps < M[y].ps; });
         int mw = *max_element(idx.begin(), idx.end(), [&](int x, int y) { return r.pred[x] < r.pred[y]; });
         double n = idx.size(), dd = 0; for (int i : idx) dd += (rm[i] - rs[i]) * (rm[i] - rs[i]);
-        printf("  %-18s #%-4.0f #%-4.0f  rho=%.2f\n", nm[d], rm[sw] + 1, rs[mw] + 1, 1 - 6 * dd / (n * (n * n - 1)));
+        printf("  %-26s %-16s %-10s %5.0f %5zu %7.1f ps %7.1f ps %+6.1f%% %6.0f %6.0f %5.2f\n", S.cases[d].name.c_str(), S.cases[d].key.c_str(), S.cases[d].sizing.c_str(),
+               r.fins[d], idx.size(), r.measWorst[d], r.modelWorst[d], 100 * (r.modelWorst[d] / r.measWorst[d] - 1), rm[sw] + 1, rs[mw] + 1, 1 - 6 * dd / (n * (n * n - 1)));
     }
-    printf("  ranking fastest->slowest  Spectre:"); for (int d : om) printf(" %s", nm[d]);
-    printf("\n                           model:  "); for (int d : oo) printf(" %s", nm[d]);
-    printf("\n");
+    printf("  S# = rank of Spectre's slowest transition in the model's order; M# = rank of the model's slowest in Spectre's; rho = rank correlation\n");
+    vector<int> om(nc), oo(nc); iota(om.begin(), om.end(), 0); iota(oo.begin(), oo.end(), 0);
+    sort(om.begin(), om.end(), [&](int a, int b) { return r.measWorst[a] < r.measWorst[b]; });
+    sort(oo.begin(), oo.end(), [&](int a, int b) { return r.modelWorst[a] < r.modelWorst[b]; });
+    int agree = 0, pairs = 0;
+    for (int i = 0; i < nc; i++) for (int j = i + 1; j < nc; j++) { pairs++; agree += ((r.measWorst[i] < r.measWorst[j]) == (r.modelWorst[i] < r.modelWorst[j])); }
+    printf("  case ranking agreement: %d of %d pairs ordered the same as Spectre\n", agree, pairs);
 }
 
 // ------------------------------------------------------- sizing optimizer
@@ -708,23 +736,29 @@ static Explored explore(Config cf, Params p, bool json) {
 }
 
 int main(int argc, char** argv) {
-    Params p; string jsonPath, calPath; bool quick = false;
+    Params p; string jsonPath, calPath, valPath; bool quick = false;
     for (int i = 1; i < argc; i++) {
         string k = argv[i];
         if (k == "--quick") { quick = true; continue; }
         if (i + 1 >= argc) break;
         string v = argv[++i];
-        if (k == "--json") jsonPath = v; else if (k == "--calibrate") calPath = v;
+        if (k == "--json") jsonPath = v; else if (k == "--calibrate") calPath = v; else if (k == "--validate") valPath = v;
         else if (k == "--tau") p.tau = stod(v); else if (k == "--mu") p.mu = stod(v); else if (k == "--gamma") p.gamma = stod(v);
         else if (k == "--gint") p.gint = stod(v); else if (k == "--cload") p.cload = stod(v); else if (k == "--stack_beta") p.stack_beta = stod(v);
     }
+    if (!valPath.empty()) {   // check the current parameters against data they were not fitted to
+        auto M = loadMeas(valPath);
+        printf("Validation data: %zu Spectre transitions in %zu circuits from %s\n\n", M.m.size(), M.cases.size(), valPath.c_str());
+        calReport(M, p, "Current parameters");
+        return 0;
+    }
     if (!calPath.empty()) {
         auto M = loadMeas(calPath);
-        printf("Calibration data: %zu Spectre transitions from %s\n\n", M.size(), calPath.c_str());
+        printf("Calibration data: %zu Spectre transitions in %zu circuits from %s\n\n", M.m.size(), M.cases.size(), calPath.c_str());
         Params p0 = p; p0.gamma = 1; p0.gint = 0.5; p0.cload = 20; p0.mu = 1.2; p0.ks = 1;
         Params pold = p0; pold.mu = 2.0; pold.gint = 1e-6; pold.tau = 1; pold.ks = 1;  // the previous model's assumptions
         {   // old model: stack nodes ignored, mu = 2; tau and cload refit so only the physics differs
-            auto fitOld = [&](Params q) { q.tau = 1; auto r = evaluateCal(M, q); double a = 0, b = 0; for (size_t i = 0; i < M.size(); i++) { double z = r.pred[i] / M[i].ps; a += z; b += z * z; } q.tau = a / b; return q; };
+            auto fitOld = [&](Params q) { q.tau = 1; auto r = evaluateCal(M, q); double a = 0, b = 0; for (size_t i = 0; i < M.m.size(); i++) { double z = r.pred[i] / M.m[i].ps; a += z; b += z * z; } q.tau = a / b; return q; };
             pold = fitOld(pold);
             calReport(M, pold, "Previous assumptions (mu=2, no stack-node cap, tau fitted)");
         }

@@ -1,4 +1,4 @@
-Model: ASAP7-calibrated  tau=0.590 ps  mu=1.20  gamma=1.14  gint=1.03  cload=19.9 C_fin  stack_beta=1.50
+Model: ASAP7-calibrated  tau=0.526 ps  mu=1.20  gamma=1.41  gint=1.05  cload=12.8 C_fin  stack_beta=1.50
 Delays in ps (pre-layout, TT 25 C 0.9 V). Cell area: best uniform row of 1-3 fins, (2r+4)x27 nm tall, 54 nm CPP, no routing.
 816 output-changing transitions per design (weights held fixed).
 
@@ -13,38 +13,38 @@ Carry-save count  multiplier=fixed      errors=0
 
 === All designs: worst delay T (ps) / cell-area estimate A (um2); f/A relative to the best ===
 Architecture      XOR            Full adder    ReLU                    Trans | 1 fin          2 fins         3 fins         | stack          | optimized (row)     |   f/A
-Carry-save count  NOR+AOI (10T)  Mirror FA     built into output gates   106 |  56.0 / 0.621   46.9 / 0.828   44.7 / 1.035  |  56.2 / 1.429  |  48.4 / 0.682 (1) |  1.00
-Carry-save count  CMOS12         Mirror FA     built into output gates   110 |  57.0 / 0.656   47.5 / 0.875   44.7 / 1.093  |  57.3 / 1.487  |  48.7 / 0.717 (1) |  0.95
-Carry-save count  NAND4 (16T)    Mirror FA     built into output gates   118 |  63.3 / 0.709   54.5 / 0.945   52.3 / 1.181  |  62.2 / 1.575  |  55.0 / 0.770 (1) |  0.78
-Carry-save count  NOR+AOI (10T)  XOR-based FA  built into output gates   122 |  58.9 / 0.779   49.6 / 1.038   48.7 / 1.298  |  51.6 / 1.400  |  51.4 / 0.840 (1) |  0.77
-Carry-save count  CMOS12         XOR-based FA  built into output gates   130 |  58.2 / 0.849   48.7 / 1.131   47.7 / 1.414  |  49.1 / 1.516  |  50.7 / 0.910 (1) |  0.72
-Carry-save count  NAND4 (16T)    XOR-based FA  built into output gates   158 |  64.2 / 1.041   55.4 / 1.388   53.2 / 1.735  |  54.3 / 1.785  |  55.2 / 1.120 (1) |  0.53
-Spec datapath     NOR+AOI (10T)  Mirror FA     AND gating                178 |  70.1 / 1.102   67.2 / 1.470   66.9 / 1.837  |  82.6 / 2.129  |  70.1 / 1.102 (1) |  0.43
-Spec datapath     NOR+AOI (10T)  XOR-based FA  AND gating                178 |  74.8 / 1.146   68.2 / 1.528   66.9 / 1.910  |  84.0 / 1.910  |  69.1 / 1.181 (1) |  0.41
-Spec datapath     CMOS12         Mirror FA     AND gating                186 |  70.0 / 1.172   66.0 / 1.563   65.7 / 1.954  |  83.3 / 2.245  |  69.2 / 1.181 (1) |  0.40
-Spec datapath     CMOS12         XOR-based FA  AND gating                188 |  76.7 / 1.233   69.7 / 1.645   67.7 / 2.056  |  73.4 / 2.056  |  70.5 / 1.260 (1) |  0.37
-Spec datapath     NOR+AOI (10T)  XOR-based FA  3-bit MUX                 198 |  83.9 / 1.260   81.0 / 1.680   80.8 / 2.100  |  98.3 / 2.100  |  81.3 / 1.268 (1) |  0.32
-Spec datapath     NOR+AOI (10T)  Mirror FA     3-bit MUX                 200 |  83.9 / 1.233   81.0 / 1.645   80.8 / 2.056  |  98.0 / 2.347  |  83.9 / 1.233 (1) |  0.32
-Spec datapath     CMOS12         Mirror FA     3-bit MUX                 208 |  82.7 / 1.303   79.8 / 1.738   79.6 / 2.172  |  98.8 / 2.464  |  82.7 / 1.303 (1) |  0.31
-Spec datapath     CMOS12         XOR-based FA  3-bit MUX                 208 |  82.0 / 1.347   79.1 / 1.796   78.9 / 2.245  |  86.3 / 2.245  |  82.0 / 1.347 (1) |  0.30
-Spec datapath     NAND4 (16T)    Mirror FA     AND gating                226 |  83.3 / 1.452   76.6 / 1.936   73.1 / 2.420  |  92.2 / 2.706  |  72.2 / 1.540 (1) |  0.30
-Spec datapath     NAND4 (16T)    Mirror FA     3-bit MUX                 248 |  92.9 / 1.583   82.5 / 2.111   81.8 / 2.639  | 107.6 / 2.931  |  81.0 / 1.627 (1) |  0.25
-Spec datapath     NAND4 (16T)    XOR-based FA  AND gating                244 |  88.8 / 1.627   78.6 / 2.170   76.2 / 2.712  |  79.3 / 2.449  |  80.5 / 1.680 (1) |  0.24
-Spec datapath     NAND4 (16T)    XOR-based FA  3-bit MUX                 264 |  94.0 / 1.741   86.4 / 2.321   84.8 / 2.901  |  94.0 / 2.694  |  85.3 / 1.802 (1) |  0.22
+Carry-save count  NOR+AOI (10T)  Mirror FA     built into output gates   106 |  58.0 / 0.621   51.9 / 0.828   50.5 / 1.035  |  56.7 / 1.429  |  52.4 / 0.682 (1) |  1.00
+Carry-save count  CMOS12         Mirror FA     built into output gates   110 |  59.3 / 0.656   52.7 / 0.875   50.7 / 1.093  |  57.8 / 1.487  |  53.7 / 0.717 (1) |  0.93
+Carry-save count  NOR+AOI (10T)  XOR-based FA  built into output gates   122 |  58.6 / 0.779   52.8 / 1.038   52.5 / 1.298  |  53.1 / 1.400  |  55.7 / 0.814 (1) |  0.79
+Carry-save count  NAND4 (16T)    Mirror FA     built into output gates   118 |  66.3 / 0.709   60.2 / 0.945   58.9 / 1.181  |  62.3 / 1.575  |  60.7 / 0.770 (1) |  0.77
+Carry-save count  CMOS12         XOR-based FA  built into output gates   130 |  57.8 / 0.849   51.6 / 1.131   51.3 / 1.414  |  51.8 / 1.516  |  53.7 / 0.910 (1) |  0.73
+Carry-save count  NAND4 (16T)    XOR-based FA  built into output gates   158 |  64.2 / 1.041   58.2 / 1.388   56.8 / 1.735  |  52.6 / 1.785  |  57.3 / 1.137 (1) |  0.55
+Spec datapath     NOR+AOI (10T)  Mirror FA     AND gating                178 |  73.6 / 1.102   72.3 / 1.470   72.6 / 1.837  |  85.5 / 2.129  |  73.6 / 1.102 (1) |  0.44
+Spec datapath     NOR+AOI (10T)  XOR-based FA  AND gating                178 |  75.1 / 1.146   72.3 / 1.528   72.6 / 1.910  |  85.3 / 1.910  |  75.1 / 1.146 (1) |  0.42
+Spec datapath     CMOS12         Mirror FA     AND gating                186 |  73.5 / 1.172   71.0 / 1.563   71.2 / 1.954  |  86.6 / 2.245  |  73.5 / 1.172 (1) |  0.42
+Spec datapath     CMOS12         XOR-based FA  AND gating                188 |  78.1 / 1.233   73.6 / 1.645   72.4 / 2.056  |  77.9 / 2.056  |  76.0 / 1.251 (1) |  0.38
+Spec datapath     NOR+AOI (10T)  Mirror FA     3-bit MUX                 200 |  88.5 / 1.233   87.2 / 1.645   87.5 / 2.056  | 101.4 / 2.347  |  88.5 / 1.233 (1) |  0.33
+Spec datapath     NOR+AOI (10T)  XOR-based FA  3-bit MUX                 198 |  88.5 / 1.260   87.2 / 1.680   87.5 / 2.100  |  98.9 / 2.100  |  88.5 / 1.260 (1) |  0.32
+Spec datapath     CMOS12         Mirror FA     3-bit MUX                 208 |  87.1 / 1.303   85.8 / 1.738   86.1 / 2.172  | 102.5 / 2.464  |  87.1 / 1.303 (1) |  0.31
+Spec datapath     CMOS12         XOR-based FA  3-bit MUX                 208 |  86.3 / 1.347   85.0 / 1.796   85.3 / 2.245  |  91.0 / 2.245  |  86.3 / 1.347 (1) |  0.31
+Spec datapath     NAND4 (16T)    Mirror FA     AND gating                226 |  86.1 / 1.452   81.7 / 1.936   79.4 / 2.420  |  94.3 / 2.706  |  79.6 / 1.487 (1) |  0.30
+Spec datapath     NAND4 (16T)    Mirror FA     3-bit MUX                 248 |  89.8 / 1.583   87.0 / 2.111   88.4 / 2.639  | 103.3 / 2.931  |  86.1 / 1.627 (1) |  0.26
+Spec datapath     NAND4 (16T)    XOR-based FA  AND gating                244 |  91.0 / 1.627   82.7 / 2.170   81.1 / 2.712  |  82.8 / 2.449  |  83.5 / 1.697 (1) |  0.25
+Spec datapath     NAND4 (16T)    XOR-based FA  3-bit MUX                 264 |  97.2 / 1.741   91.1 / 2.321   90.1 / 2.901  |  95.8 / 2.694  |  90.0 / 1.802 (1) |  0.22
 
 Best Spec datapath: NOR+AOI (10T) / Mirror FA / AND gating
-  worst-case testbench vector (min sizing): [x1=+0 x2=-1 w1=+0 w2=-1 wb=+0] -> [x1=+1 x2=+1 w1=+0 w2=-1 wb=+0]  70.1 ps
+  worst-case testbench vector (min sizing): [x1=+0 x2=-1 w1=+0 w2=-1 wb=+0] -> [x1=+1 x2=+1 w1=+0 w2=-1 wb=+0]  73.6 ps
   critical path: x2[1] MUL2/NAND2#6 MUL2/OAI21#7 MUL2/NOR2#8 ADD2/NOR2#18 ADD2/AOI21#19 ADD2/NOR2#20 ADD2/AOI21#21 ADD3/NOR2#30 ADD3/AOI21#31 ADD3/NOR2#32 ADD3/AOI21#33 RELU/NOR2#36
 
 Best Carry-save count: NOR+AOI (10T) / Mirror FA / built into output gates
-  worst-case testbench vector (min sizing): [x1=+0 x2=+1 w1=+0 w2=-1 wb=+0] -> [x1=+1 x2=-1 w1=+0 w2=-1 wb=+0]  56.0 ps
+  worst-case testbench vector (min sizing): [x1=+0 x2=+1 w1=+0 w2=-1 wb=+0] -> [x1=+1 x2=-1 w1=+0 w2=-1 wb=+0]  58.0 ps
   critical path: x2[1] MUL2/NAND2#6 MUL2/OAI21#7 MUL2/NOR2#8 CNT/MIR_S#13 OUT/INV#14 OUT/AOI211#17
 
 === Stack sizing P/N ratio sweep (best design of each architecture) ===
 stack_beta            Spec datapath         Carry-save count
-      1.00      75.5 ps   1.703 um2        48.7 ps   1.143 um2  
-      1.20      79.5 ps   2.129 um2        49.1 ps   1.376 um2  
-      1.50      82.6 ps   2.129 um2        56.2 ps   1.429 um2  
-      2.00      87.5 ps   2.613 um2        64.2 ps   1.720 um2  
+      1.00      78.0 ps   1.703 um2        52.4 ps   1.143 um2  
+      1.20      82.4 ps   2.129 um2        53.5 ps   1.376 um2  
+      1.50      85.5 ps   2.129 um2        56.7 ps   1.429 um2  
+      2.00      89.4 ps   2.613 um2        63.5 ps   1.720 um2  
 
 wrote build/netlist.json
