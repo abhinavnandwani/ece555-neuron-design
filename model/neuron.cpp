@@ -735,7 +735,8 @@ static Explored explore(Config cf, Params p, bool json) {
         for (size_t i = 0; i < d.c.gates.size(); i++) d.c.setMult(i, f);
         d.c.finalize();
         Timing t = timeIt(d, nullptr, 0); e.u[f] = pt(d, t.worst);
-        if (f == 1) { t1 = t; if (json) e.json.push_back(designJson(d, t, "min")); }
+        if (f == 1) t1 = t;
+        if (json) e.json.push_back(designJson(d, t, "fin" + to_string(f)));
         for (auto& sp : optimizeSizing(d)) {
             if (sp.worst * sp.area < bestTA) { bestTA = sp.worst * sp.area; bestM = sp.mult; e.bal = {sp.area, sp.fins, sp.worst, e.st.trans, 0}; }
             if (sp.worst < fastT) { fastT = sp.worst; fastM = sp.mult; e.fast = {sp.area, sp.fins, sp.worst, e.st.trans, 0}; }
@@ -744,13 +745,8 @@ static Explored explore(Config cf, Params p, bool json) {
     if (ts.worst * e.st.area < bestTA) { e.bal = e.st; bestM.clear(); }
     Design d(cf, p, SZ_MIN);
     if (!bestM.empty()) { applyMults(d, bestM); e.bal.row = d.c.row(); }
-    if (json) {
-        e.json.push_back(designJson(ds, ts, "stack"));
-        if (!bestM.empty()) e.json.push_back(designJson(d, timeIt(d, nullptr, 0), "balanced"));
-        else e.json.push_back(designJson(ds, ts, "balanced"));
-        applyMults(d, fastM); e.fast.row = d.c.row();
-        e.json.push_back(designJson(d, timeIt(d, nullptr, 0), "fastest"));
-    }
+    if (json) e.json.push_back(designJson(ds, ts, "stack"));
+    applyMults(d, fastM); e.fast.row = d.c.row();
     return e;
 }
 

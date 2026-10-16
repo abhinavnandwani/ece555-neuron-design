@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Build the standalone diagram page from the template and the model's netlist JSON.
+"""Build the standalone page from the template, the model's netlist JSON and web/facts.json.
 
 Usage: python3 tools/build_page.py web/page.html build/netlist.json build/site/index.html
+
+web/facts.json holds the measured Spectre and area-study tables shown on the page (generated
+from the experiment folders and calibration/fit.txt).
 
 The template holds the page head (title, styles) followed by <main>...; the netlist JSON
 is injected at __DATA__. The output is one self-contained HTML file with no server needed.
@@ -17,6 +20,12 @@ json.loads(data)  # fail early on a broken export
 if "</script" in data:
     sys.exit("netlist JSON contains '</script', refusing to inline it")
 
+facts_path = template_path.parent / "facts.json"
+facts = facts_path.read_text() if facts_path.exists() else "{}"
+json.loads(facts)
+if "</script" in facts:
+    sys.exit("facts JSON contains '</script', refusing to inline it")
+
 head, sep, body = template.partition("<main>")
 if not sep:
     sys.exit("template has no <main> element")
@@ -27,7 +36,7 @@ page = (
     + head
     + "</head>\n<body>\n"
     + sep
-    + body.replace("__DATA__", data)
+    + body.replace("__DATA__", data).replace("__FACTS__", facts)
     + "\n</body>\n</html>\n"
 )
 out_path.parent.mkdir(parents=True, exist_ok=True)
