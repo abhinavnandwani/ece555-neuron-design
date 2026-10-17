@@ -1,0 +1,109 @@
+INV check markers=0
+CELL INV
+  I MP0 pmos_rvt 3 ("B=VDD" "D=Y" "G=A" "S=VDD")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=A" "S=VSS")
+  TERMS ("A" "VDD" "VSS" "Y")
+NAND2 check markers=0
+CELL NAND2
+  I MP1 pmos_rvt 3 ("B=VDD" "D=Y" "G=B" "S=VDD")
+  I MP0 pmos_rvt 3 ("B=VDD" "D=Y" "G=A" "S=VDD")
+  I MN1 nmos_rvt 2 ("B=VSS" "D=n1" "G=B" "S=VSS")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=A" "S=n1")
+  TERMS ("A" "B" "VDD" "VSS" "Y")
+NOR2 check markers=0
+CELL NOR2
+  I MP1 pmos_rvt 3 ("B=VDD" "D=Y" "G=B" "S=p1")
+  I MP0 pmos_rvt 3 ("B=VDD" "D=p1" "G=A" "S=VDD")
+  I MN1 nmos_rvt 2 ("B=VSS" "D=Y" "G=B" "S=VSS")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=A" "S=VSS")
+  TERMS ("A" "B" "VDD" "VSS" "Y")
+NOR3 check markers=0
+CELL NOR3
+  I MP2 pmos_rvt 3 ("B=VDD" "D=Y" "G=C" "S=p2")
+  I MP1 pmos_rvt 3 ("B=VDD" "D=p2" "G=B" "S=p1")
+  I MP0 pmos_rvt 3 ("B=VDD" "D=p1" "G=A" "S=VDD")
+  I MN2 nmos_rvt 2 ("B=VSS" "D=Y" "G=C" "S=VSS")
+  I MN1 nmos_rvt 2 ("B=VSS" "D=Y" "G=B" "S=VSS")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=A" "S=VSS")
+  TERMS ("A" "B" "C" "VDD" "VSS" "Y")
+XNOR2 check markers=0
+CELL XNOR2
+  I MP3 pmos_rvt 3 ("B=VDD" "D=Y" "G=B" "S=p1")
+  I MP2 pmos_rvt 3 ("B=VDD" "D=Y" "G=AN" "S=p1")
+  I MP1 pmos_rvt 3 ("B=VDD" "D=p1" "G=BN" "S=VDD")
+  I MP0 pmos_rvt 3 ("B=VDD" "D=p1" "G=A" "S=VDD")
+  I MP5 pmos_rvt 3 ("B=VDD" "D=BN" "G=B" "S=VDD")
+  I MP4 pmos_rvt 3 ("B=VDD" "D=AN" "G=A" "S=VDD")
+  I MN3 nmos_rvt 2 ("B=VSS" "D=n2" "G=B" "S=VSS")
+  I MN2 nmos_rvt 2 ("B=VSS" "D=Y" "G=AN" "S=n2")
+  I MN1 nmos_rvt 2 ("B=VSS" "D=n1" "G=BN" "S=VSS")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=A" "S=n1")
+  I MN5 nmos_rvt 2 ("B=VSS" "D=BN" "G=B" "S=VSS")
+  I MN4 nmos_rvt 2 ("B=VSS" "D=AN" "G=A" "S=VSS")
+  TERMS ("A" "B" "VDD" "VSS" "Y")
+AOI211 check markers=0
+CELL AOI211
+  I MP3 pmos_rvt 3 ("B=VDD" "D=Y" "G=B" "S=p2")
+  I MP2 pmos_rvt 3 ("B=VDD" "D=Y" "G=A" "S=p2")
+  I MP1 pmos_rvt 3 ("B=VDD" "D=p2" "G=D" "S=p1")
+  I MP0 pmos_rvt 3 ("B=VDD" "D=p1" "G=C" "S=VDD")
+  I MN3 nmos_rvt 2 ("B=VSS" "D=Y" "G=D" "S=VSS")
+  I MN2 nmos_rvt 2 ("B=VSS" "D=Y" "G=C" "S=VSS")
+  I MN1 nmos_rvt 2 ("B=VSS" "D=n1" "G=B" "S=VSS")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=A" "S=n1")
+  TERMS ("A" "B" "C" "D" "VDD" "VSS" "Y")
+TIELO check markers=0
+CELL TIELO
+  I MP0 pmos_rvt 3 ("B=VDD" "D=h" "G=h" "S=VDD")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=Y" "G=h" "S=VSS")
+  TERMS ("VDD" "VSS" "Y")
+FA_MIRROR check markers=0
+CELL FA_MIRROR
+  I MP11 pmos_rvt 3 ("B=VDD" "D=h5" "G=A" "S=VDD")
+  I MP10 pmos_rvt 3 ("B=VDD" "D=h4" "G=B" "S=h5")
+  I MP9 pmos_rvt 3 ("B=VDD" "D=SN" "G=C" "S=h4")
+  I MP8 pmos_rvt 3 ("B=VDD" "D=SN" "G=CON" "S=h3")
+  I MP7 pmos_rvt 3 ("B=VDD" "D=h3" "G=C" "S=VDD")
+  I MP6 pmos_rvt 3 ("B=VDD" "D=h3" "G=B" "S=VDD")
+  I MP5 pmos_rvt 3 ("B=VDD" "D=h3" "G=A" "S=VDD")
+  I MP4 pmos_rvt 3 ("B=VDD" "D=h2" "G=A" "S=VDD")
+  I MP3 pmos_rvt 3 ("B=VDD" "D=CON" "G=B" "S=h2")
+  I MP2 pmos_rvt 3 ("B=VDD" "D=CON" "G=C" "S=h1")
+  I MP1 pmos_rvt 3 ("B=VDD" "D=h1" "G=B" "S=VDD")
+  I MP0 pmos_rvt 3 ("B=VDD" "D=h1" "G=A" "S=VDD")
+  I MN11 nmos_rvt 2 ("B=VSS" "D=g5" "G=A" "S=VSS")
+  I MN10 nmos_rvt 2 ("B=VSS" "D=g4" "G=B" "S=g5")
+  I MN9 nmos_rvt 2 ("B=VSS" "D=SN" "G=C" "S=g4")
+  I MN8 nmos_rvt 2 ("B=VSS" "D=SN" "G=CON" "S=g3")
+  I MN7 nmos_rvt 2 ("B=VSS" "D=g3" "G=C" "S=VSS")
+  I MN6 nmos_rvt 2 ("B=VSS" "D=g3" "G=B" "S=VSS")
+  I MN5 nmos_rvt 2 ("B=VSS" "D=g3" "G=A" "S=VSS")
+  I MN4 nmos_rvt 2 ("B=VSS" "D=g2" "G=A" "S=VSS")
+  I MN3 nmos_rvt 2 ("B=VSS" "D=CON" "G=B" "S=g2")
+  I MN2 nmos_rvt 2 ("B=VSS" "D=CON" "G=C" "S=g1")
+  I MN1 nmos_rvt 2 ("B=VSS" "D=g1" "G=B" "S=VSS")
+  I MN0 nmos_rvt 2 ("B=VSS" "D=g1" "G=A" "S=VSS")
+  TERMS ("A" "B" "C" "CON" "SN" "VDD" "VSS")
+MULT2 check markers=0
+CELL MULT2
+  I I0 NAND2 nil ("A=A0" "B=B0" "VDD=VDD" "VSS=VSS" "Y=n0")
+  I I1 INV nil ("A=n0" "VDD=VDD" "VSS=VSS" "Y=P0")
+  I I2 XNOR2 nil ("A=A1" "B=B1" "VDD=VDD" "VSS=VSS" "Y=xn")
+  I I3 NOR2 nil ("A=n0" "B=xn" "VDD=VDD" "VSS=VSS" "Y=P1")
+  TERMS ("A0" "A1" "B0" "B1" "P0" "P1" "VDD" "VSS")
+RELU check markers=0
+CELL RELU
+  I I0 NOR3 nil ("A=NZ_CON" "B=NG_S" "C=NG_C" "VDD=VDD" "VSS=VSS" "Y=Z1")
+  I I1 AOI211 nil ("A=NZ_CON" "B=NG_S" "C=NZ_SN" "D=NG_C" "VDD=VDD" "VSS=VSS" "Y=Z0")
+  TERMS ("NG_C" "NG_S" "NZ_CON" "NZ_SN" "VDD" "VSS" "Z0" "Z1")
+NEURON check markers=0
+CELL NEURON
+  I U1 MULT2 nil ("A0=X1_0" "A1=X1_1" "B0=W1_0" "B1=W1_1" "P0=PB0" "P1=PB1" "VDD=VDD" "VSS=VSS")
+  I U0 MULT2 nil ("A0=X0_0" "A1=X0_1" "B0=W0_0" "B1=W0_1" "P0=PA0" "P1=PA1" "VDD=VDD" "VSS=VSS")
+  I U3 FA_MIRROR nil ("A=B_1" "B=PA1" "C=PB1" "CON=NG_CON" "SN=NG_SN" "VDD=VDD" "VSS=VSS")
+  I U2 FA_MIRROR nil ("A=B_0" "B=PA0" "C=PB0" "CON=NZ_CON" "SN=NZ_SN" "VDD=VDD" "VSS=VSS")
+  I U5 INV nil ("A=NG_CON" "VDD=VDD" "VSS=VSS" "Y=NG_C")
+  I U4 INV nil ("A=NG_SN" "VDD=VDD" "VSS=VSS" "Y=NG_S")
+  I U6 RELU nil ("NG_C=NG_C" "NG_S=NG_S" "NZ_CON=NZ_CON" "NZ_SN=NZ_SN" "VDD=VDD" "VSS=VSS" "Z0=Z0" "Z1=Z1")
+  I U7 TIELO nil ("VDD=VDD" "VSS=VSS" "Y=Z2")
+  TERMS ("B_0" "B_1" "VDD" "VSS" "W0_0" "W0_1" "W1_0" "W1_1" "X0_0" "X0_1" "X1_0" "X1_1" "Z0" "Z1" "Z2")

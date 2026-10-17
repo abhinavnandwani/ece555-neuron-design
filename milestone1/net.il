@@ -1,0 +1,12 @@
+; MS1: HSPICE (hspiceD) netlist of NEURON
+nLog = outfile("/userspace/apyadav/ece555/ms1/net.txt")
+envSetVal("asimenv.startup" "switchViewList" 'string "hspice hspiceD spice cmos_sch cmos.sch schematic")
+envSetVal("asimenv.startup" "stopViewList" 'string "hspice hspiceD spice")
+simulator('hspiceD)
+design("NEURON" "NEURON" "schematic")
+resultsDir("/userspace/apyadav/ece555/ms1/ocean")
+errset(envOption('switchViewList '("hspice" "hspiceD" "spice" "cmos_sch" "cmos.sch" "schematic")
+                 'stopViewList '("hspice" "hspiceD" "spice")) t)
+fprintf(nLog "netlist=%L\n" errset(createNetlist(?recreateAll t ?display nil) t))
+close(nLog)
+exit()
