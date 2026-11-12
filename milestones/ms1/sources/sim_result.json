@@ -1,0 +1,1 @@
+{"cases": 243, "pass": 243, "note": "Re-run 2026-10-17 after setting w = 27n x nfin. Sampled output levels were at least 0.900 V for a logic 1 and at most 33 uV for a logic 0."}
