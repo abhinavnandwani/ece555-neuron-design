@@ -32,7 +32,7 @@ sys.path.insert(0, str(HERE))
 from design import CELLS, count
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--output', type=Path, default=HERE.parent / 'ECE555_Milestone1_GateLevel_Ready.pdf')
+parser.add_argument('--output', type=Path, default=HERE.parents[2] / 'build/ms1/ECE555_MS1_Expanded_Reference.pdf')
 args = parser.parse_args()
 SOURCE = HERE.parent / 'original/ECE555_Milestone1_GateLevel.pdf'
 OUTPUT = args.output

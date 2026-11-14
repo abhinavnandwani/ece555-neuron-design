@@ -4,7 +4,7 @@ Fall 2026 ECE555 design project: design, verify, lay out, and optimize a single 
 
 ## Milestone 1 report and sources
 
-The [revised Milestone 1 report](milestones/ms1/ECE555_Milestone1_GateLevel_Ready.pdf) and [source package with verification/rebuild instructions](milestones/ms1/README.md) are now available. The November 12 revision fixes the clipped diagram and enlarges the original Cadence schematic details. The third teammate's name remains blank pending confirmation. **Nothing has been submitted on Canvas.**
+The [seven-page Milestone 1 report](milestones/ms1/Group20_ECE555_Milestone1.pdf) documents Group 20's 112-transistor carry-save neuron. The [source package](milestones/ms1/README.md) includes the editable Word report, Excalidraw datapath, Cadence schematic sources, exported netlist, and verification files. Group 20 consists of Arihan Yadav, Abhinav Nandwani, and Jackson Ryan.
 
 ## Current experimental result
 
@@ -32,12 +32,12 @@ Only 14 of the 72 beta-grid points have measured area. The selected layouts cove
 
 Deadlines come from slide 15 of the [project slide deck](specs/F26_ECE555_project.pptx); deliverables come from the [project specification](specs/F26-Project-ECE555.pdf). All dates are in 2026. Each graded milestone is worth 25 points.
 
-Milestone 1 status last reviewed: **November 12, 2026**. Other milestone and experiment statuses below retain the **October 16, 2026** review. Status reflects evidence committed to this repository; “Not documented” does not establish whether work has started or been submitted outside the repo.
+Milestone 1 status last reviewed: **November 13, 2026**. Other milestone and experiment statuses below retain the **October 16, 2026** review. Status reflects evidence committed to this repository; “Not documented” does not establish whether work has started or been submitted outside the repo.
 
 | Milestone | Deadline | Required deliverables / completion criteria | Status | Repository evidence / remaining work |
 | --- | --- | --- | --- | --- |
-| Team sign-up | October 15 | Register the three-student group. | Unconfirmed | Team registration is not recorded in the repository. |
-| MS1: Gate-level neuron design | November 13 | Complete the neuron schematic and submit schematics of the neuron and its submodules, such as the multiplier, adders, and multiplexer. | Design/report prepared; Canvas submission pending | [Revised 20-page PDF](milestones/ms1/ECE555_Milestone1_GateLevel_Ready.pdf), Cadence schematic-generation source, exported netlist, testbench, and [reproduction notes](milestones/ms1/README.md) are present. The third teammate's name remains to be filled in. |
+| Team sign-up | October 15 | Register the three-student group. | Group 20 | Arihan Yadav, Abhinav Nandwani, and Jackson Ryan. |
+| MS1: Gate-level neuron design | November 13 | Complete the neuron schematic and submit schematics of the neuron and its submodules, such as the multiplier, adders, and multiplexer. | Design and report complete | [Seven-page PDF](milestones/ms1/Group20_ECE555_Milestone1.pdf), editable Word and Excalidraw files, Cadence schematic-generation source, exported netlist, testbench, and [reproduction notes](milestones/ms1/README.md). |
 | MS2: Layout and functionality verification | December 4 | Implement the MS1 neuron layout; verify the neuron netlist at **VDD = 0.9 V**, stating inputs, weights, and expected outputs, including the worst-case input combination. Submit submodule and neuron **DRC/LVS** screenshots and neuron **Calibre extraction** screenshots; back up the extracted netlist. | Experimental evidence available | Experimental layouts, timing measurements and DRC/LVS summaries are available in the [experiment package](experiments/2026-10-16/README.md). The [MS1 package](milestones/ms1/README.md) now includes submodule schematics. Required layout screenshots and the milestone submission are not documented. |
 | MS3: Optimized layout | December 11 | Identify and optimize the critical path and improve layout/routing; discuss possible improvements. Submit updated submodule and neuron DRC/LVS screenshots and neuron Calibre extraction screenshots, compare parasitic capacitances, and report the final design boundary area. | Experimental evidence available | Fourteen experimental boundary areas and sizing comparisons are measured. Layout compaction, RC parasitic comparisons and final optimized implementation remain open. |
 | MS4: Final report and demonstration | December 16 | Test the **extracted neuron netlist at VDD = 0.9 V**, documenting inputs, weights, and expected outputs. Demonstrate correct worst-case output; measure worst-case input-to-output delay **T** and report **f = 1/T**. Prepare the report and demonstration, including design/component explanations, transistor-sizing rationale, and final area. | Not documented | The final report, demonstration evidence, extracted-netlist simulation results, and post-layout timing/frequency measurements are not present. |
@@ -95,4 +95,3 @@ The schematic explorer supports uniform 1:1, 2:2 and 3:3 sizing and stack compen
 ### Live page
 
 The [Model and diagram workflow](.github/workflows/model.yml) checks saved evidence, reruns the model and builds the page on pushes and pull requests. On `main` it deploys the [design report](https://abhinavnandwani.com/ece555-neuron-design/) to GitHub Pages. Course milestones require the student's completed design and submission; experiment publication does not establish either.
-
